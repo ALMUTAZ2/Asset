@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <script>
+      (function () {
+        try {
+          var desc = Object.getOwnPropertyDescriptor(window, 'fetch');
+          if (desc && desc.get && !desc.set && desc.configurable) {
+            Object.defineProperty(window, 'fetch', {
+              configurable: true,
+              enumerable: desc.enumerable,
+              get: desc.get,
+              set: function () {
+                // Ignore read-only window.fetch overwrite attempts from browser extensions
+              },
+            });
+          }
+        } catch (_) {}
+        window.addEventListener(
+          'error',
+          function (ev) {
+            var src = (ev && ev.filename) || '';
+            var stack = (ev && ev.error && ev.error.stack) || '';
+            if (
+              src.indexOf('chrome-extension://') === 0 ||
+              src.indexOf('moz-extension://') === 0 ||
+              stack.indexOf('chrome-extension://') !== -1
+            ) {
+              ev.preventDefault();
+              ev.stopImmediatePropagation();
+            }
+          },
+          true
+        );
+      })();
+    </script>
+    <title>منصة متابعة فواتير الصيانة والطوارئ</title>
+    <meta name="description" content="بوابة رقمية موحدة لمتابعة واعتماد فواتير الصيانة والطوارئ لقسم استلام الأصول مع قاعدة بيانات Firestore للمستخدمين والصلاحيات والمقاولين والفواتير." />
+    <meta property="og:title" content="منصة متابعة فواتير الصيانة والطوارئ" />
+    <meta property="og:description" content="بوابة رقمية موحدة لمتابعة واعتماد فواتير الصيانة والطوارئ لقسم استلام الأصول مع قاعدة بيانات Firestore للمستخدمين والصلاحيات والمقاولين والفواتير." />
+    <meta property="og:type" content="website" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+  </head>
+  <body class="font-cairo antialiased selection:bg-accent-500 selection:text-white">
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

@@ -1,0 +1,3527 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>منصة متابعة فواتير الصيانة والطوارئ | قسم استلام الأصول</title>
+
+  <!-- Google Font: Cairo -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap" rel="stylesheet" />
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: { sans: ['Cairo', 'sans-serif'] },
+          colors: {
+            navy: { 50: '#f0f4f9', 100: '#dce5f2', 700: '#163b6b', 800: '#0f2f57', 900: '#0B2545', 950: '#07182e' },
+            accent: { 400: '#ff7d3b', 500: '#F26522', 600: '#d95314' }
+          }
+        }
+      }
+    };
+  </script>
+
+  <!-- Chart.js + DataLabels Plugin -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
+  <!-- SheetJS (xlsx) -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <!-- html2pdf.js for Direct PDF Export -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      font-family: 'Cairo', sans-serif;
+      background-color: #f1f5f9;
+      color: #0f172a;
+      overflow-x: hidden;
+    }
+
+    /* Smooth Scrollbars */
+    ::-webkit-scrollbar { width: 8px; height: 8px; }
+    ::-webkit-scrollbar-track { background: #e2e8f0; border-radius: 99px; }
+    ::-webkit-scrollbar-thumb { background: #94a3b8; border-radius: 99px; }
+    ::-webkit-scrollbar-thumb:hover { background: #64748b; }
+
+    /* Animations */
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .animate-fade-up { animation: fadeUp 0.35s ease-out both; }
+
+    @keyframes pulseGlow {
+      0%, 100% { transform: scale(1); opacity: 0.25; }
+      50% { transform: scale(1.08); opacity: 0.4; }
+    }
+    .hero-glow { animation: pulseGlow 7s ease-in-out infinite; }
+
+    /* Print Styling */
+    @media print {
+      body * { visibility: hidden; }
+      #printArea, #printArea * { visibility: visible; }
+      #printArea {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        background: #fff;
+        padding: 16px;
+      }
+      .no-print { display: none !important; }
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col">
+
+  <!-- ==================== TOAST CONTAINER ==================== -->
+  <div id="toastContainer" class="fixed top-4 left-4 z-[9999] flex flex-col gap-2 max-w-sm w-full pointer-events-none"></div>
+
+  <!-- ==================== 3-SECOND WELCOME SPLASH ==================== -->
+  <div id="welcomeSplash" class="hidden fixed inset-0 z-[9500] bg-gradient-to-br from-navy-950 via-navy-900 to-navy-800 flex items-center justify-center p-6">
+    <div class="text-center space-y-5 animate-fade-up max-w-md w-full bg-white/10 backdrop-blur-xl border border-white/15 rounded-3xl p-10 shadow-2xl">
+      <div class="w-20 h-20 mx-auto rounded-2xl bg-gradient-to-br from-accent-500 to-amber-500 flex items-center justify-center shadow-lg shadow-accent-500/30">
+        <i data-lucide="zap" class="w-10 h-10 text-white"></i>
+      </div>
+      <div class="space-y-2">
+        <p class="text-sm font-bold text-accent-400">أهلاً بك في منصة قسم استلام الأصول</p>
+        <h2 id="welcomeSplashName" class="text-2xl sm:text-3xl font-black text-white leading-snug">مرحباً</h2>
+        <p id="welcomeSplashRole" class="text-xs text-slate-300 font-semibold"></p>
+      </div>
+      <div class="w-full h-1.5 bg-white/15 rounded-full overflow-hidden">
+        <div id="welcomeProgressBar" class="h-full bg-accent-500 rounded-full transition-all duration-[3000ms] ease-linear" style="width: 0%;"></div>
+      </div>
+      <p class="text-[11px] text-slate-300">جاري تجهيز لوحة العمل الخاصة بك...</p>
+    </div>
+  </div>
+
+  <!-- ==================== 1. EXECUTIVE SPLIT LOGIN PORTAL ==================== -->
+  <section id="loginScreen" class="min-h-screen grid grid-cols-1 lg:grid-cols-12 bg-slate-100">
+    <!-- Right Panel (Executive Branding Hero) -->
+    <div class="lg:col-span-7 bg-gradient-to-br from-navy-950 via-navy-900 to-navy-800 text-white p-8 sm:p-12 lg:p-16 flex flex-col justify-between relative overflow-hidden">
+      <!-- Decorative Glows -->
+      <div class="hero-glow absolute -top-24 -left-24 w-96 h-96 bg-accent-500/30 rounded-full blur-3xl pointer-events-none"></div>
+      <div class="hero-glow absolute -bottom-24 -right-24 w-96 h-96 bg-sky-500/20 rounded-full blur-3xl pointer-events-none"></div>
+
+      <!-- Top Logo & Brand -->
+      <div class="relative z-10 flex items-center gap-4">
+        <div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-accent-500 to-amber-500 flex items-center justify-center shadow-xl shadow-accent-500/30 shrink-0">
+          <i data-lucide="zap" class="w-8 h-8 text-white"></i>
+        </div>
+        <div>
+          <h1 class="text-xl sm:text-2xl font-black tracking-tight text-white">منصة متابعة فواتير الصيانة والطوارئ قسم استلام الاصول</h1>
+          <p class="text-xs sm:text-sm text-slate-300 font-semibold mt-0.5">بوابة رقمية موحّدة لمتابعة واعتماد فواتير المقاولين</p>
+        </div>
+      </div>
+
+      <!-- Center Hero Message & 3 Feature Cards -->
+      <div class="relative z-10 my-10 space-y-6">
+        <div class="space-y-2 max-w-xl">
+          <h2 class="text-2xl sm:text-4xl font-black leading-tight text-white">
+            متابعة لحظية دقيقة لجميع <span class="text-accent-400">فواتير الصيانة والطوارئ</span>
+          </h2>
+          <p class="text-sm text-slate-300 leading-relaxed">
+            نظام متكامل يربط المقاولين بموظفي قسم استلام الأصول لرفع الفواتير ومراجعتها واعتمادها واستخراج التقارير التنفيذية بدقة وسرعة.
+          </p>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2">
+          <div class="bg-white/10 backdrop-blur-md border border-white/15 rounded-2xl p-4 space-y-2 hover:bg-white/15 transition">
+            <div class="w-10 h-10 rounded-xl bg-accent-500/20 text-accent-400 flex items-center justify-center">
+              <i data-lucide="shield-check" class="w-5 h-5"></i>
+            </div>
+            <h3 class="text-sm font-extrabold text-white">بوابات وصلاحيات معزولة</h3>
+            <p class="text-xs text-slate-300 leading-relaxed">شاشة مستقلة لكل مقاول وشاشة متكاملة لموظفي الشركة بصلاحيات مرنة.</p>
+          </div>
+
+          <div class="bg-white/10 backdrop-blur-md border border-white/15 rounded-2xl p-4 space-y-2 hover:bg-white/15 transition">
+            <div class="w-10 h-10 rounded-xl bg-sky-500/20 text-sky-300 flex items-center justify-center">
+              <i data-lucide="camera" class="w-5 h-5"></i>
+            </div>
+            <h3 class="text-sm font-extrabold text-white">إرفاق صور الأعمال وأرشفتها</h3>
+            <p class="text-xs text-slate-300 leading-relaxed">توثيق مراحل العمل بالصور مع تنظيم تلقائي لكل مقاول ورقم أمر عمل.</p>
+          </div>
+
+          <div class="bg-white/10 backdrop-blur-md border border-white/15 rounded-2xl p-4 space-y-2 hover:bg-white/15 transition">
+            <div class="w-10 h-10 rounded-xl bg-emerald-500/20 text-emerald-300 flex items-center justify-center">
+              <i data-lucide="bar-chart-3" class="w-5 h-5"></i>
+            </div>
+            <h3 class="text-sm font-extrabold text-white">لوحة تحكم وتقارير تنفيذية</h3>
+            <p class="text-xs text-slate-300 leading-relaxed">مؤشرات أداء فورية وتصدير شامل لملفات PDF و Excel حسب الفلاتر.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Footer Note -->
+      <div class="relative z-10 text-xs text-slate-400 flex items-center justify-between border-t border-white/10 pt-4">
+        <span>قسم استلام الأصول — إدارة الصيانة والطوارئ</span>
+        <span class="font-bold text-slate-300">منصة متابعة واعتماد الفواتير</span>
+      </div>
+    </div>
+
+    <!-- Left Panel (Login Card) -->
+    <div class="lg:col-span-5 flex items-center justify-center p-6 sm:p-10 lg:p-12">
+      <div class="w-full max-w-md bg-white rounded-3xl shadow-xl border border-slate-200/80 p-7 sm:p-9 space-y-6 animate-fade-up">
+        <div class="text-center space-y-1.5">
+          <h2 class="text-2xl font-black text-navy-900">تسجيل الدخول</h2>
+          <p class="text-xs text-slate-500 font-semibold">اختر نوع الحساب للمتابعة إلى المنصة</p>
+        </div>
+
+        <!-- Tabs: Company Staff FIRST, then Contractors -->
+        <div class="grid grid-cols-2 gap-1.5 p-1.5 bg-slate-100 rounded-2xl border border-slate-200">
+          <button type="button" id="tabBtnStaff" onclick="switchLoginTab('staff')"
+            class="py-2.5 px-3 rounded-xl text-xs sm:text-sm font-extrabold flex items-center justify-center gap-2 transition bg-navy-900 text-white shadow-sm">
+            <i data-lucide="user-check" class="w-4 h-4"></i>
+            <span>دخول موظف الشركة</span>
+          </button>
+          <button type="button" id="tabBtnContractor" onclick="switchLoginTab('contractor')"
+            class="py-2.5 px-3 rounded-xl text-xs sm:text-sm font-extrabold flex items-center justify-center gap-2 transition text-slate-600 hover:text-navy-900">
+            <i data-lucide="hard-hat" class="w-4 h-4"></i>
+            <span>دخول المقاولين</span>
+          </button>
+        </div>
+
+        <!-- TAB 1: Company Staff Login Form (DEFAULT) -->
+        <form id="staffLoginForm" onsubmit="handleStaffLogin(event)" class="space-y-4">
+          <div>
+            <label class="block text-xs font-extrabold text-navy-900 mb-1.5">الرقم الوظيفي</label>
+            <div class="relative">
+              <i data-lucide="id-card" class="w-4 h-4 text-slate-400 absolute right-3.5 top-1/2 -translate-y-1/2"></i>
+              <input type="text" id="loginStaffUsername" required placeholder="أدخل الرقم الوظيفي"
+                class="w-full rounded-xl border border-slate-300 bg-slate-50 focus:bg-white focus:border-navy-900 focus:ring-2 focus:ring-navy-900/15 py-3 pr-10 pl-3.5 text-sm font-bold outline-none transition" dir="ltr" />
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-xs font-extrabold text-navy-900 mb-1.5">الرقم السري</label>
+            <div class="relative">
+              <i data-lucide="lock" class="w-4 h-4 text-slate-400 absolute right-3.5 top-1/2 -translate-y-1/2"></i>
+              <input type="password" id="loginStaffPassword" required placeholder="••••••••"
+                class="w-full rounded-xl border border-slate-300 bg-slate-50 focus:bg-white focus:border-navy-900 focus:ring-2 focus:ring-navy-900/15 py-3 pr-10 pl-3.5 text-sm font-bold outline-none transition" dir="ltr" />
+            </div>
+          </div>
+
+          <button type="submit"
+            class="w-full py-3.5 rounded-xl bg-gradient-to-l from-navy-900 to-navy-800 hover:from-navy-800 hover:to-navy-700 text-white font-extrabold text-sm shadow-lg shadow-navy-900/20 flex items-center justify-center gap-2 transition">
+            <span>دخول موظف الشركة</span>
+            <i data-lucide="arrow-left" class="w-4 h-4"></i>
+          </button>
+
+          <div class="text-center pt-1">
+            <button type="button" onclick="openResetPasswordModal()" class="text-xs font-bold text-accent-600 hover:text-accent-500 inline-flex items-center gap-1.5 transition">
+              <i data-lucide="key-round" class="w-3.5 h-3.5"></i>
+              <span>إعادة تعيين كلمة المرور</span>
+            </button>
+          </div>
+        </form>
+
+        <!-- TAB 2: Contractor Login Form -->
+        <form id="contractorLoginForm" onsubmit="handleContractorLogin(event)" class="hidden space-y-4">
+          <div>
+            <label class="block text-xs font-extrabold text-navy-900 mb-1.5">ابحث واختر اسم المقاول</label>
+            <div class="relative mb-2">
+              <i data-lucide="search" class="w-4 h-4 text-slate-400 absolute right-3.5 top-1/2 -translate-y-1/2"></i>
+              <input type="text" id="contractorSearchInput" oninput="filterContractorDropdown()" placeholder="ابحث باسم المؤسسة أو الشركة..."
+                class="w-full rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:border-accent-500 py-2.5 pr-10 pl-3 text-xs font-bold outline-none transition" />
+            </div>
+            <select id="loginContractorSelect" required
+              class="w-full rounded-xl border border-slate-300 bg-slate-50 focus:bg-white focus:border-navy-900 focus:ring-2 focus:ring-navy-900/15 py-3 px-3.5 text-sm font-bold outline-none transition">
+            </select>
+          </div>
+
+          <div>
+            <label class="block text-xs font-extrabold text-navy-900 mb-1.5">الرقم السري للمقاول</label>
+            <div class="relative">
+              <i data-lucide="lock" class="w-4 h-4 text-slate-400 absolute right-3.5 top-1/2 -translate-y-1/2"></i>
+              <input type="password" id="loginContractorPin" required placeholder="أدخل الرقم السري"
+                class="w-full rounded-xl border border-slate-300 bg-slate-50 focus:bg-white focus:border-navy-900 focus:ring-2 focus:ring-navy-900/15 py-3 pr-10 pl-3.5 text-sm font-bold outline-none transition" dir="ltr" />
+            </div>
+          </div>
+
+          <button type="submit"
+            class="w-full py-3.5 rounded-xl bg-gradient-to-l from-accent-500 to-accent-600 hover:from-accent-600 hover:to-orange-700 text-white font-extrabold text-sm shadow-lg shadow-accent-500/25 flex items-center justify-center gap-2 transition">
+            <span>دخول بوابة المقاول</span>
+            <i data-lucide="arrow-left" class="w-4 h-4"></i>
+          </button>
+        </form>
+      </div>
+    </div>
+  </section>
+
+  <!-- ==================== 2. CONTRACTOR PORTAL ==================== -->
+  <section id="contractorPortal" class="hidden min-h-screen flex flex-col bg-slate-100">
+    <!-- Top Header -->
+    <header class="bg-navy-900 text-white shadow-md sticky top-0 z-40">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 py-3.5 flex flex-wrap items-center justify-between gap-3">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl bg-accent-500 flex items-center justify-center shadow">
+            <i data-lucide="hard-hat" class="w-5 h-5 text-white"></i>
+          </div>
+          <div>
+            <h1 class="text-sm sm:text-base font-black text-white">بوابة المقاول — متابعة فواتير الصيانة والطوارئ</h1>
+            <p class="text-xs text-accent-400 font-bold">مرحباً، <span id="cpContractorName" class="text-white"></span></p>
+          </div>
+        </div>
+        <div class="flex items-center gap-2">
+          <button onclick="logout()" class="px-3.5 py-2 rounded-xl bg-white/10 hover:bg-rose-600 text-white text-xs font-bold flex items-center gap-1.5 transition">
+            <i data-lucide="log-out" class="w-4 h-4"></i>
+            <span>تسجيل الخروج</span>
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto w-full px-4 sm:px-6 py-6 space-y-6 flex-1">
+      <!-- Personal KPIs -->
+      <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+        <div class="bg-white rounded-2xl p-4 border border-slate-200 shadow-sm">
+          <p class="text-xs font-bold text-slate-500">إجمالي فواتيري</p>
+          <p id="cpKpiTotal" class="text-2xl font-black text-navy-900 mt-1">0</p>
+        </div>
+        <div class="bg-white rounded-2xl p-4 border border-emerald-200 shadow-sm">
+          <p class="text-xs font-bold text-emerald-700">معتمد</p>
+          <p id="cpKpiApproved" class="text-2xl font-black text-emerald-600 mt-1">0</p>
+        </div>
+        <div class="bg-white rounded-2xl p-4 border border-sky-200 shadow-sm">
+          <p class="text-xs font-bold text-sky-700">قيد المراجعة</p>
+          <p id="cpKpiPending" class="text-2xl font-black text-sky-600 mt-1">0</p>
+        </div>
+        <div class="bg-white rounded-2xl p-4 border border-rose-200 shadow-sm">
+          <p class="text-xs font-bold text-rose-700">مرفوض / ملاحظات</p>
+          <p id="cpKpiRejected" class="text-2xl font-black text-rose-600 mt-1">0</p>
+        </div>
+        <div class="bg-white rounded-2xl p-4 border border-amber-200 shadow-sm col-span-2 sm:col-span-1">
+          <p class="text-xs font-bold text-amber-700">نسبة الاعتماد</p>
+          <p id="cpKpiRate" class="text-2xl font-black text-amber-600 mt-1">0%</p>
+        </div>
+      </div>
+
+      <!-- New / Edit Invoice Form Card -->
+      <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 sm:p-6 space-y-5">
+        <div class="flex flex-wrap items-center justify-between gap-3 pb-4 border-b border-slate-100">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl bg-accent-500/15 text-accent-600 flex items-center justify-center">
+              <i data-lucide="file-plus-2" class="w-5 h-5"></i>
+            </div>
+            <div>
+              <h2 id="cpFormTitle" class="text-base font-black text-navy-900">رفع فاتورة صيانة / طوارئ جديدة</h2>
+              <p class="text-xs text-slate-500">قم بتعبئة الحقول وإرفاق صور مراحل التنفيذ لإرسالها لقسم استلام الأصول</p>
+            </div>
+          </div>
+          <button type="button" id="cpCancelEditBtn" onclick="resetContractorForm()" class="hidden px-3 py-1.5 rounded-lg bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-bold">
+            إلغاء التعديل
+          </button>
+        </div>
+
+        <form id="contractorInvoiceForm" onsubmit="handleContractorSubmit(event)" class="space-y-5">
+          <input type="hidden" id="cpEditId" value="" />
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <!-- Work Order -->
+            <div>
+              <label class="block text-xs font-extrabold text-navy-900 mb-1">رقم أمر العمل *</label>
+              <input type="text" id="cpWo" required oninput="checkDuplicateWO()" placeholder="مثال: 422073943"
+                class="w-full rounded-xl border border-slate-300 bg-slate-50 focus:bg-white focus:border-navy-900 py-2.5 px-3 text-sm font-bold outline-none" dir="ltr" />
+              <p id="cpWoDupWarning" class="hidden text-[11px] font-bold text-rose-600 mt-1 flex items-center gap-1">
+                <i data-lucide="alert-triangle" class="w-3.5 h-3.5"></i>
+                <span>تنبيه: رقم أمر العمل مسجّل مسبقاً!</span>
+              </p>
+            </div>
+
+            <!-- Consultant -->
+            <div>
+              <label class="block text-xs font-extrabold text-navy-900 mb-1">الاستشاري *</label>
+              <select id="cpConsultant" required class="w-full rounded-xl border border-slate-300 bg-slate-50 focus:bg-white py-2.5 px-3 text-sm font-bold outline-none"></select>
+            </div>
+
+            <!-- Invoice Date -->
+            <div>
+              <label class="block text-xs font-extrabold text-navy-900 mb-1">تاريخ الفاتورة *</label>
+              <input type="date" id="cpInvoiceDate" required class="w-full rounded-xl border border-slate-300 bg-slate-50 focus:bg-white py-2.5 px-3 text-sm font-bold outline-none" />
+            </div>
+
+            <!-- Work Type -->
+            <div>
+              <label class="block text-xs font-extrabold text-navy-900 mb-1">نوع العمل *</label>
+              <select id="cpWorkType" required class="w-full rounded-xl border border-slate-300 bg-slate-50 focus:bg-white py-2.5 px-3 text-sm font-bold outline-none"></select>
+            </div>
+
+            <!-- Work Description -->
+            <div class="sm:col-span-2">
+              <label class="block text-xs font-extrabold text-navy-900 mb-1">وصف العمل *</label>
+              <input type="text" id="cpWorkDesc" list="workDescList" required placeholder="اختر أو اكتب وصف العمل"
+                class="w-full rounded-xl border border-slate-300 bg-slate-50 focus:bg-white py-2.5 px-3 text-sm font-bold outline-none" />
+              <datalist id="workDescList"></datalist>
+            </div>
+
+            <!-- Equipment Type -->
+            <div>
+              <label class="block text-xs font-extrabold text-navy-900 mb-1">نوع المعدة *</label>
+              <select id="cpEquipType" required class="w-full rounded-xl border border-slate-300 bg-slate-50 focus:bg-white py-2.5 px-3 text-sm font-bold outline-none"></select>
+            </div>
+
+            <!-- Functional Location -->
+            <div>
+              <label class="block text-xs font-extrabold text-navy-900 mb-1">الموقع الوظيفي *</label>
+              <input type="text" id="cpFuncLoc" required placeholder="مثال: 4400-JHS-090101"
+                class="w-full rounded-xl border border-slate-300 bg-slate-50 focus:bg-white py-2.5 px-3 text-sm font-bold outline-none" dir="ltr" />
+            </div>
+
+            <!-- Office -->
+            <div>
+              <label class="block text-xs font-extrabold text-navy-900 mb-1">المكتب *</label>
+              <select id="cpOffice" required class="w-full rounded-xl border border-slate-300 bg-slate-50 focus:bg-white py-2.5 px-3 text-sm font-bold outline-none"></select>
+            </div>
+
+            <!-- Delivery Date (Auto Today & Locked) -->
+            <div>
+              <label class="block text-xs font-extrabold text-navy-900 mb-1">تاريخ التسليم للأصول (تلقائي)</label>
+              <input type="date" id="cpDeliveryDate" readonly
+                class="w-full rounded-xl border border-slate-200 bg-slate-100 text-slate-600 py-2.5 px-3 text-sm font-bold outline-none cursor-not-allowed" />
+            </div>
+          </div>
+
+          <!-- Smart Pre-Submission Quality Checklist -->
+          <div class="bg-slate-50 rounded-2xl p-4 border border-slate-200 space-y-3">
+            <div class="flex flex-wrap items-center justify-between gap-2">
+              <h3 class="text-xs font-extrabold text-navy-900 flex items-center gap-1.5">
+                <i data-lucide="list-checks" class="w-4 h-4 text-accent-500"></i>
+                <span>قائمة التحقق الذكية قبل الرفع (لتفادي تأخير اعتماد الفاتورة)</span>
+              </h3>
+              <span id="cpChecklistPct" class="text-xs font-black text-navy-900">جاهزية الملف: 0%</span>
+            </div>
+            <div class="w-full h-2 bg-slate-200 rounded-full overflow-hidden">
+              <div id="cpChecklistBar" class="h-full bg-emerald-500 transition-all duration-300" style="width: 0%;"></div>
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2.5 text-xs font-bold text-slate-700">
+              <label class="flex items-center gap-2 bg-white p-2.5 rounded-xl border border-slate-200 cursor-pointer">
+                <input type="checkbox" class="cp-chk w-4 h-4 accent-emerald-600" value="توقيع قسم GIS" onchange="updateChecklistProgress()" />
+                <span>توقيع قسم GIS</span>
+              </label>
+              <label class="flex items-center gap-2 bg-white p-2.5 rounded-xl border border-slate-200 cursor-pointer">
+                <input type="checkbox" class="cp-chk w-4 h-4 accent-emerald-600" value="إنشاء المعدة على SAP" onchange="updateChecklistProgress()" />
+                <span>إنشاء المعدة على SAP</span>
+              </label>
+              <label class="flex items-center gap-2 bg-white p-2.5 rounded-xl border border-slate-200 cursor-pointer">
+                <input type="checkbox" class="cp-chk w-4 h-4 accent-emerald-600" value="نموذج اختبار ما قبل التشغيل" onchange="updateChecklistProgress()" />
+                <span>نموذج اختبار ما قبل التشغيل</span>
+              </label>
+              <label class="flex items-center gap-2 bg-white p-2.5 rounded-xl border border-slate-200 cursor-pointer">
+                <input type="checkbox" class="cp-chk w-4 h-4 accent-emerald-600" value="مطابقة الصور لمراحل العمل" onchange="updateChecklistProgress()" />
+                <span>مطابقة الصور للأعمال</span>
+              </label>
+              <label class="flex items-center gap-2 bg-white p-2.5 rounded-xl border border-slate-200 cursor-pointer">
+                <input type="checkbox" class="cp-chk w-4 h-4 accent-emerald-600" value="الالتزام بالشريط التحذيري" onchange="updateChecklistProgress()" />
+                <span>الالتزام بالشريط التحذيري</span>
+              </label>
+            </div>
+          </div>
+
+          <!-- Photo Upload Zone (Dropbox Auto-Archive) -->
+          <div class="bg-sky-50/70 rounded-2xl p-4 sm:p-5 border border-sky-200 space-y-4">
+            <div class="flex flex-wrap items-center justify-between gap-3">
+              <div class="flex items-center gap-2.5">
+                <div class="w-10 h-10 rounded-xl bg-sky-100 text-sky-700 flex items-center justify-center">
+                  <i data-lucide="camera" class="w-5 h-5"></i>
+                </div>
+                <div>
+                  <h3 class="text-sm font-extrabold text-navy-900">إرفاق صور الأعمال والفاتورة (الأرشفة التلقائية على Dropbox)</h3>
+                  <p class="text-xs text-slate-500">ينشئ النظام تلقائياً مجلد باسم المقاول وبداخله مجلد برقم أمر العمل لرفع الصور إليه</p>
+                </div>
+              </div>
+              <div class="flex items-center gap-2">
+                <select id="cpPhotoStage" class="rounded-xl border border-sky-300 bg-white py-2 px-3 text-xs font-bold outline-none">
+                  <option value="قبل التنفيذ">قبل التنفيذ</option>
+                  <option value="أثناء العمل">أثناء العمل</option>
+                  <option value="بعد التنفيذ" selected>بعد التنفيذ</option>
+                  <option value="صورة الفاتورة">صورة الفاتورة</option>
+                </select>
+                <label class="px-4 py-2 rounded-xl bg-sky-600 hover:bg-sky-700 text-white text-xs font-extrabold cursor-pointer flex items-center gap-1.5 transition">
+                  <i data-lucide="upload" class="w-4 h-4"></i>
+                  <span>اختيار صور</span>
+                  <input type="file" id="cpPhotoInput" accept="image/*" multiple class="hidden" onchange="handleContractorPhotosSelected(event)" />
+                </label>
+              </div>
+            </div>
+
+            <div id="cpPhotosPreviewGrid" class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-3"></div>
+          </div>
+
+          <div class="flex justify-end">
+            <button type="submit" id="cpSubmitBtn"
+              class="px-7 py-3 rounded-xl bg-gradient-to-l from-accent-500 to-accent-600 hover:from-accent-600 hover:to-orange-700 text-white text-sm font-extrabold shadow-lg shadow-accent-500/25 flex items-center gap-2 transition">
+              <i data-lucide="send" class="w-4 h-4"></i>
+              <span>حفظ وإرسال الفاتورة للمراجعة</span>
+            </button>
+          </div>
+        </form>
+      </div>
+
+      <!-- Contractor Invoices Table -->
+      <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 sm:p-6 space-y-4">
+        <div class="flex flex-wrap items-center justify-between gap-3">
+          <h2 class="text-base font-black text-navy-900 flex items-center gap-2">
+            <i data-lucide="table-2" class="w-5 h-5 text-accent-500"></i>
+            <span>سجل فواتيري</span>
+          </h2>
+          <div class="flex flex-wrap items-center gap-2">
+            <input type="text" id="cpTableSearch" oninput="renderContractorTable()" placeholder="بحث برقم أمر العمل أو الموقع..."
+              class="rounded-xl border border-slate-300 bg-slate-50 py-2 px-3 text-xs font-bold outline-none w-56" />
+            <select id="cpTableStatusFilter" onchange="renderContractorTable()"
+              class="rounded-xl border border-slate-300 bg-slate-50 py-2 px-3 text-xs font-bold outline-none">
+              <option value="">كل الحالات</option>
+              <option value="معتمد">معتمد</option>
+              <option value="قيد المراجعة">قيد المراجعة</option>
+              <option value="مرفوض">مرفوض</option>
+              <option value="ملاحظات معلقة">ملاحظات معلقة</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Horizontal & Vertical Scrollable Table (NO المدة, NO التصنيف, المرفقات column) -->
+        <div class="overflow-auto max-h-[55vh] rounded-xl border border-slate-200">
+          <table class="w-full text-xs text-right border-collapse min-w-[1150px]">
+            <thead class="bg-navy-900 text-white sticky top-0 z-10">
+              <tr>
+                <th class="p-3 font-extrabold">رقم أمر العمل</th>
+                <th class="p-3 font-extrabold">الاستشاري</th>
+                <th class="p-3 font-extrabold">تاريخ الفاتورة</th>
+                <th class="p-3 font-extrabold">نوع العمل</th>
+                <th class="p-3 font-extrabold">وصف العمل</th>
+                <th class="p-3 font-extrabold">نوع المعدة</th>
+                <th class="p-3 font-extrabold">الموقع الوظيفي</th>
+                <th class="p-3 font-extrabold">المكتب</th>
+                <th class="p-3 font-extrabold">تاريخ التسليم للأصول</th>
+                <th class="p-3 font-extrabold">الحالة</th>
+                <th class="p-3 font-extrabold">المرفقات</th>
+                <th class="p-3 font-extrabold text-center">إجراءات</th>
+              </tr>
+            </thead>
+            <tbody id="cpInvoicesTbody" class="divide-y divide-slate-100 bg-white"></tbody>
+          </table>
+        </div>
+      </div>
+    </main>
+  </section>
+
+  <!-- ==================== 3. STAFF PORTAL ==================== -->
+  <section id="staffPortal" class="hidden min-h-screen flex bg-slate-100">
+    <!-- Sidebar (Desktop & Mobile Drawer) -->
+    <aside id="staffSidebar" class="fixed lg:sticky top-0 right-0 z-50 h-screen w-68 bg-navy-950 text-white flex flex-col justify-between transition-transform duration-300 translate-x-full lg:translate-x-0 shrink-0 shadow-2xl">
+      <div class="p-5 space-y-6 overflow-y-auto">
+        <!-- Brand -->
+        <div class="flex items-center justify-between gap-2 pb-4 border-b border-white/10">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-accent-500 to-amber-500 flex items-center justify-center shadow-lg">
+              <i data-lucide="zap" class="w-5 h-5 text-white"></i>
+            </div>
+            <div>
+              <h1 class="text-sm font-black text-white leading-tight">فواتير الصيانة والطوارئ</h1>
+              <p class="text-[11px] text-slate-400 font-semibold">قسم استلام الأصول</p>
+            </div>
+          </div>
+          <button onclick="toggleMobileSidebar()" class="lg:hidden p-1.5 rounded-lg bg-white/10 text-slate-300">
+            <i data-lucide="x" class="w-4 h-4"></i>
+          </button>
+        </div>
+
+        <!-- Nav Buttons -->
+        <nav class="space-y-1.5">
+          <button onclick="switchStaffSection('dashboard')" data-sec="dashboard" class="staff-nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition bg-accent-500 text-white shadow">
+            <i data-lucide="layout-dashboard" class="w-4 h-4"></i>
+            <span>لوحة التحكم (Dashboard)</span>
+          </button>
+          <button onclick="switchStaffSection('invoices')" data-sec="invoices" class="staff-nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition text-slate-300 hover:bg-white/10 hover:text-white">
+            <i data-lucide="file-spreadsheet" class="w-4 h-4"></i>
+            <span>سجل ومراجعة الفواتير</span>
+          </button>
+          <button onclick="switchStaffSection('reports')" data-sec="reports" class="staff-nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition text-slate-300 hover:bg-white/10 hover:text-white">
+            <i data-lucide="file-bar-chart-2" class="w-4 h-4"></i>
+            <span>التقارير والتصدير الكامل</span>
+          </button>
+          <button id="navBtnUsers" onclick="switchStaffSection('users')" data-sec="users" class="staff-nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition text-slate-300 hover:bg-white/10 hover:text-white">
+            <i data-lucide="users-cog" class="w-4 h-4"></i>
+            <span>إدارة الصلاحيات والمستخدمين</span>
+          </button>
+          <button onclick="switchStaffSection('onedrive')" data-sec="onedrive" class="staff-nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition text-slate-300 hover:bg-white/10 hover:text-white">
+            <i data-lucide="cloud" class="w-4 h-4"></i>
+            <span>الربط السحابي Dropbox</span>
+          </button>
+        </nav>
+      </div>
+
+      <!-- Bottom User Card -->
+      <div class="p-4 border-t border-white/10 bg-navy-900/60 space-y-2.5">
+        <div class="flex items-center gap-3">
+          <div class="w-9 h-9 rounded-xl bg-accent-500/20 text-accent-400 flex items-center justify-center font-black text-sm">
+            <i data-lucide="user" class="w-4 h-4"></i>
+          </div>
+          <div class="min-w-0">
+            <p id="sidebarUserName" class="text-xs font-extrabold text-white truncate"></p>
+            <p id="sidebarUserRole" class="text-[11px] text-slate-400 font-semibold truncate"></p>
+          </div>
+        </div>
+        <div class="grid grid-cols-2 gap-1.5">
+          <button onclick="openResetPasswordModal(true)" class="py-2 px-2 rounded-lg bg-white/10 hover:bg-white/20 text-[11px] font-bold text-slate-200 flex items-center justify-center gap-1 transition">
+            <i data-lucide="key-round" class="w-3.5 h-3.5"></i>
+            <span>كلمة المرور</span>
+          </button>
+          <button onclick="logout()" class="py-2 px-2 rounded-lg bg-rose-600/80 hover:bg-rose-600 text-[11px] font-bold text-white flex items-center justify-center gap-1 transition">
+            <i data-lucide="log-out" class="w-3.5 h-3.5"></i>
+            <span>خروج</span>
+          </button>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Mobile Sidebar Backdrop -->
+    <div id="mobileSidebarBackdrop" onclick="toggleMobileSidebar()" class="hidden fixed inset-0 bg-black/50 z-40 lg:hidden"></div>
+
+    <!-- Main Content Area -->
+    <div class="flex-1 flex flex-col min-w-0">
+      <!-- Top Bar -->
+      <header class="bg-white border-b border-slate-200 sticky top-0 z-30 px-4 sm:px-6 py-3.5 flex items-center justify-between gap-3 shadow-sm">
+        <div class="flex items-center gap-3">
+          <button onclick="toggleMobileSidebar()" class="lg:hidden p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-navy-900">
+            <i data-lucide="menu" class="w-5 h-5"></i>
+          </button>
+          <div>
+            <h2 id="staffHeaderTitle" class="text-base sm:text-lg font-black text-navy-900">لوحة التحكم التنفيذية (Dashboard)</h2>
+            <p class="text-xs text-slate-500 font-bold">مرحباً، <span id="topbarWelcomeName" class="text-accent-600"></span></p>
+          </div>
+        </div>
+        <div class="flex items-center gap-2">
+          <span id="topbarDateBadge" class="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 text-slate-700 text-xs font-bold"></span>
+        </div>
+      </header>
+
+      <!-- Sections Container -->
+      <div class="p-4 sm:p-6 space-y-6 flex-1">
+
+        <!-- ========== MODULE 1: DASHBOARD ========== -->
+        <div id="sec_dashboard" class="space-y-6 animate-fade-up">
+          <!-- Filter Bar + Export Dashboard PDF ONLY -->
+          <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-4 space-y-3">
+            <div class="flex flex-wrap items-center justify-between gap-3">
+              <div class="flex items-center gap-2">
+                <i data-lucide="sliders-horizontal" class="w-4 h-4 text-accent-500"></i>
+                <h3 class="text-xs font-extrabold text-navy-900">تصفية لوحة التحكم</h3>
+              </div>
+              <div class="flex flex-wrap items-center gap-2">
+                <button onclick="resetDashboardFilters()" class="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition">
+                  إعادة تعيين
+                </button>
+                <button onclick="exportDashboardPdf()" class="px-4 py-2 rounded-xl bg-navy-900 hover:bg-navy-800 text-white text-xs font-extrabold flex items-center gap-1.5 shadow-sm transition">
+                  <i data-lucide="file-down" class="w-4 h-4 text-accent-400"></i>
+                  <span>تصدير Dashboard PDF</span>
+                </button>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+              <select id="dashFilterContractor" onchange="renderDashboard()" class="rounded-xl border border-slate-300 bg-slate-50 py-2 px-3 text-xs font-bold outline-none">
+                <option value="">كل المقاولين</option>
+              </select>
+              <select id="dashFilterOffice" onchange="renderDashboard()" class="rounded-xl border border-slate-300 bg-slate-50 py-2 px-3 text-xs font-bold outline-none">
+                <option value="">كل المكاتب</option>
+              </select>
+              <select id="dashFilterWorkType" onchange="renderDashboard()" class="rounded-xl border border-slate-300 bg-slate-50 py-2 px-3 text-xs font-bold outline-none">
+                <option value="">كل أنواع الأعمال</option>
+              </select>
+              <select id="dashFilterConsultant" onchange="renderDashboard()" class="rounded-xl border border-slate-300 bg-slate-50 py-2 px-3 text-xs font-bold outline-none">
+                <option value="">كل الاستشاريين</option>
+              </select>
+              <select id="dashFilterStatus" onchange="renderDashboard()" class="rounded-xl border border-slate-300 bg-slate-50 py-2 px-3 text-xs font-bold outline-none">
+                <option value="">كل الحالات</option>
+                <option value="معتمد">معتمد</option>
+                <option value="قيد المراجعة">قيد المراجعة</option>
+                <option value="مرفوض">مرفوض</option>
+                <option value="ملاحظات معلقة">ملاحظات معلقة</option>
+              </select>
+            </div>
+            <p id="dashActiveFilterHint" class="text-[11px] font-bold text-slate-500"></p>
+          </div>
+
+          <!-- Row 1: 6 Executive KPI Cards (All Clickable) -->
+          <div class="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-4">
+            <button type="button" onclick="openDashDrilldown('all')" class="text-right bg-white rounded-2xl p-4 border border-slate-200 hover:border-navy-900 shadow-sm hover:shadow-md transition group">
+              <div class="flex items-center justify-between">
+                <span class="text-xs font-bold text-slate-500">إجمالي الفواتير</span>
+                <div class="w-8 h-8 rounded-lg bg-navy-50 text-navy-900 flex items-center justify-center"><i data-lucide="layers" class="w-4 h-4"></i></div>
+              </div>
+              <p id="kpiTotal" class="text-2xl font-black text-navy-900 mt-2">0</p>
+              <p class="text-[11px] text-slate-400 font-semibold mt-1 group-hover:text-navy-700">اضغط لعرض التفاصيل</p>
+            </button>
+
+            <button type="button" onclick="openDashDrilldown('approved')" class="text-right bg-white rounded-2xl p-4 border border-emerald-200 hover:border-emerald-500 shadow-sm hover:shadow-md transition group">
+              <div class="flex items-center justify-between">
+                <span class="text-xs font-bold text-emerald-700">معتمد</span>
+                <div class="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center"><i data-lucide="check-circle-2" class="w-4 h-4"></i></div>
+              </div>
+              <p id="kpiApproved" class="text-2xl font-black text-emerald-600 mt-2">0</p>
+              <div class="mt-1.5 space-y-1">
+                <p id="kpiApprovedPct" class="text-[11px] font-bold text-emerald-700">نسبة الاعتماد: 0%</p>
+                <div class="w-full h-1.5 bg-emerald-100 rounded-full overflow-hidden">
+                  <div id="kpiApprovedBar" class="h-full bg-emerald-500 rounded-full" style="width: 0%;"></div>
+                </div>
+              </div>
+            </button>
+
+            <button type="button" onclick="openDashDrilldown('flagged')" class="text-right bg-white rounded-2xl p-4 border border-rose-200 hover:border-rose-500 shadow-sm hover:shadow-md transition group">
+              <div class="flex items-center justify-between">
+                <span class="text-xs font-bold text-rose-700">عليه ملاحظة / مرفوض</span>
+                <div class="w-8 h-8 rounded-lg bg-rose-50 text-rose-600 flex items-center justify-center"><i data-lucide="alert-triangle" class="w-4 h-4"></i></div>
+              </div>
+              <p id="kpiFlagged" class="text-2xl font-black text-rose-600 mt-2">0</p>
+              <p class="text-[11px] text-rose-500 font-semibold mt-1">يتطلب معالجة المقاول</p>
+            </button>
+
+            <button type="button" onclick="openDashDrilldown('emergency')" class="text-right bg-white rounded-2xl p-4 border border-orange-200 hover:border-accent-500 shadow-sm hover:shadow-md transition group">
+              <div class="flex items-center justify-between">
+                <span class="text-xs font-bold text-accent-600">فواتير الطوارئ</span>
+                <div class="w-8 h-8 rounded-lg bg-orange-50 text-accent-500 flex items-center justify-center"><i data-lucide="zap" class="w-4 h-4"></i></div>
+              </div>
+              <p id="kpiEmergency" class="text-2xl font-black text-navy-900 mt-2">0</p>
+              <p id="kpiEmergencyPct" class="text-[11px] text-slate-500 font-semibold mt-1">0% من الإجمالي</p>
+            </button>
+
+            <button type="button" onclick="openDashDrilldown('maintenance')" class="text-right bg-white rounded-2xl p-4 border border-sky-200 hover:border-sky-500 shadow-sm hover:shadow-md transition group">
+              <div class="flex items-center justify-between">
+                <span class="text-xs font-bold text-sky-700">أعمال الصيانة</span>
+                <div class="w-8 h-8 rounded-lg bg-sky-50 text-sky-600 flex items-center justify-center"><i data-lucide="wrench" class="w-4 h-4"></i></div>
+              </div>
+              <p id="kpiMaintenance" class="text-2xl font-black text-navy-900 mt-2">0</p>
+              <p class="text-[11px] text-slate-500 font-semibold mt-1">صيانة معدة + صيانة مغذي</p>
+            </button>
+
+            <button type="button" onclick="openDashDrilldown('c4c')" class="text-right bg-white rounded-2xl p-4 border border-amber-200 hover:border-amber-500 shadow-sm hover:shadow-md transition group">
+              <div class="flex items-center justify-between">
+                <span class="text-xs font-bold text-amber-700">أعمال C4C</span>
+                <div class="w-8 h-8 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center"><i data-lucide="clipboard-list" class="w-4 h-4"></i></div>
+              </div>
+              <p id="kpiC4c" class="text-2xl font-black text-navy-900 mt-2">0</p>
+              <p class="text-[11px] text-slate-500 font-semibold mt-1">طلبات C4C المستقلة</p>
+            </button>
+          </div>
+
+          <!-- Row 2: 3 SLA Working-Day Cards (Clickable) -->
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <button type="button" onclick="openDashDrilldown('sla_new')" class="text-right bg-white rounded-2xl p-4 border border-emerald-200 hover:border-emerald-500 shadow-sm hover:shadow-md transition flex items-center justify-between">
+              <div>
+                <p class="text-xs font-extrabold text-emerald-700">جديد (1 - 3 أيام عمل)</p>
+                <p id="kpiSlaNew" class="text-2xl font-black text-emerald-600 mt-1">0</p>
+                <p class="text-[11px] text-slate-400 font-semibold">فواتير قيد المراجعة ضمن المهلة</p>
+              </div>
+              <div class="w-11 h-11 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                <i data-lucide="clock" class="w-5 h-5"></i>
+              </div>
+            </button>
+
+            <button type="button" onclick="openDashDrilldown('sla_late')" class="text-right bg-white rounded-2xl p-4 border border-amber-300 hover:border-amber-500 shadow-sm hover:shadow-md transition flex items-center justify-between">
+              <div>
+                <p class="text-xs font-extrabold text-amber-700">متأخر (4 - 5 أيام عمل)</p>
+                <p id="kpiSlaLate" class="text-2xl font-black text-amber-600 mt-1">0</p>
+                <p class="text-[11px] text-slate-400 font-semibold">تحتاج متابعة عاجلة للمراجعة</p>
+              </div>
+              <div class="w-11 h-11 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center">
+                <i data-lucide="hourglass" class="w-5 h-5"></i>
+              </div>
+            </button>
+
+            <button type="button" onclick="openDashDrilldown('sla_escalated')" class="text-right bg-white rounded-2xl p-4 border border-rose-300 hover:border-rose-500 shadow-sm hover:shadow-md transition flex items-center justify-between">
+              <div>
+                <p class="text-xs font-extrabold text-rose-700">مصعّد (أكثر من 5 أيام عمل)</p>
+                <p id="kpiSlaEscalated" class="text-2xl font-black text-rose-600 mt-1">0</p>
+                <p class="text-[11px] text-slate-400 font-semibold">تجاوزت 5 أيام عمل (دون الجمعة والسبت)</p>
+              </div>
+              <div class="w-11 h-11 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center">
+                <i data-lucide="flame" class="w-5 h-5"></i>
+              </div>
+            </button>
+          </div>
+
+          <!-- Interactive Drill-Down Panel (Appears when clicking any KPI Card) -->
+          <div id="dashDrilldownPanel" class="hidden bg-white rounded-2xl shadow-md border-2 border-navy-900/20 p-5 space-y-3 animate-fade-up">
+            <div class="flex flex-wrap items-center justify-between gap-2 pb-3 border-b border-slate-100">
+              <div class="flex items-center gap-2">
+                <span class="w-2.5 h-2.5 rounded-full bg-accent-500"></span>
+                <h3 id="dashDrilldownTitle" class="text-sm font-black text-navy-900">تفاصيل البطاقة</h3>
+                <span id="dashDrilldownCount" class="px-2.5 py-0.5 rounded-full bg-navy-900 text-white text-xs font-extrabold">0</span>
+              </div>
+              <div class="flex items-center gap-2">
+                <input type="text" id="dashDrilldownSearch" oninput="renderDashDrilldown()" placeholder="بحث سريع..."
+                  class="rounded-xl border border-slate-300 bg-slate-50 py-1.5 px-3 text-xs font-bold outline-none w-48" />
+                <button onclick="closeDashDrilldown()" class="p-1.5 rounded-lg bg-slate-100 hover:bg-rose-100 text-slate-600 hover:text-rose-600">
+                  <i data-lucide="x" class="w-4 h-4"></i>
+                </button>
+              </div>
+            </div>
+            <div class="overflow-auto max-h-72 rounded-xl border border-slate-200">
+              <table class="w-full text-xs text-right border-collapse min-w-[900px]">
+                <thead class="bg-slate-100 text-navy-900 sticky top-0">
+                  <tr>
+                    <th class="p-2.5 font-extrabold">رقم أمر العمل</th>
+                    <th class="p-2.5 font-extrabold">المقاول</th>
+                    <th class="p-2.5 font-extrabold">نوع العمل</th>
+                    <th class="p-2.5 font-extrabold">وصف العمل</th>
+                    <th class="p-2.5 font-extrabold">المكتب</th>
+                    <th class="p-2.5 font-extrabold">تاريخ التسليم</th>
+                    <th class="p-2.5 font-extrabold">الحالة</th>
+                    <th class="p-2.5 font-extrabold text-center">مراجعة</th>
+                  </tr>
+                </thead>
+                <tbody id="dashDrilldownTbody" class="divide-y divide-slate-100"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Chart Row 1: Work Types Distribution (Positioned ABOVE Contractor Chart, Clean Original Style) -->
+          <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 sm:p-6">
+            <div class="flex items-center justify-between mb-4">
+              <h3 class="text-sm sm:text-base font-black text-navy-900 flex items-center gap-2">
+                <i data-lucide="pie-chart" class="w-5 h-5 text-accent-500"></i>
+                <span>توزيع أنواع الأعمال</span>
+              </h3>
+            </div>
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
+              <div class="lg:col-span-5 relative h-60 flex items-center justify-center">
+                <canvas id="chartWorkTypes"></canvas>
+                <div class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                  <span class="text-xs font-bold text-slate-400">الإجمالي</span>
+                  <span id="workTypesCenterTotal" class="text-2xl font-black text-navy-900">0</span>
+                </div>
+              </div>
+              <div id="workTypesLegendGrid" class="lg:col-span-7 grid grid-cols-1 sm:grid-cols-2 gap-3"></div>
+            </div>
+          </div>
+
+          <!-- Chart Row 2: Contractors by Approval Status (Sorted Ascending, Legend at Bottom, Total Badges) -->
+          <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 sm:p-6">
+            <div class="flex items-center justify-between mb-4">
+              <h3 class="text-sm sm:text-base font-black text-navy-900 flex items-center gap-2">
+                <i data-lucide="bar-chart-horizontal" class="w-5 h-5 text-accent-500"></i>
+                <span>عدد الفواتير حسب المقاول وحالة الاعتماد</span>
+              </h3>
+            </div>
+            <div class="h-96 relative">
+              <canvas id="chartContractors"></canvas>
+            </div>
+          </div>
+
+          <!-- Chart Row 3: Offices + Work Descriptions -->
+          <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 sm:p-6">
+              <div class="flex items-center justify-between mb-4">
+                <h3 class="text-sm sm:text-base font-black text-navy-900 flex items-center gap-2">
+                  <i data-lucide="map-pin" class="w-5 h-5 text-accent-500"></i>
+                  <span>توزيع الفواتير حسب المكاتب</span>
+                </h3>
+              </div>
+              <div class="h-72 relative">
+                <canvas id="chartOffices"></canvas>
+              </div>
+            </div>
+
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 sm:p-6">
+              <div class="flex items-center justify-between mb-4">
+                <h3 class="text-sm sm:text-base font-black text-navy-900 flex items-center gap-2">
+                  <i data-lucide="wrench" class="w-5 h-5 text-accent-500"></i>
+                  <span>أكثر أوصاف الأعمال تكراراً</span>
+                </h3>
+              </div>
+              <div class="h-72 relative">
+                <canvas id="chartWorkDescs"></canvas>
+              </div>
+            </div>
+          </div>
+
+          <!-- Chart Row 4: Top Delay Reasons + Delay Reasons by Contractor (Top 5 Contractors) -->
+          <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 sm:p-6">
+              <div class="flex items-center justify-between mb-4">
+                <h3 class="text-sm sm:text-base font-black text-navy-900 flex items-center gap-2">
+                  <i data-lucide="alert-octagon" class="w-5 h-5 text-rose-500"></i>
+                  <span>مؤشر أبرز أسباب تأخر إنجاز الفواتير</span>
+                </h3>
+                <span class="text-xs font-bold text-slate-400">حسب تكرار الملاحظة</span>
+              </div>
+              <div class="h-72 relative">
+                <canvas id="chartTopDelayNotes"></canvas>
+              </div>
+            </div>
+
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 sm:p-6">
+              <div class="flex items-center justify-between mb-4">
+                <h3 class="text-sm sm:text-base font-black text-navy-900 flex items-center gap-2">
+                  <i data-lucide="building-2" class="w-5 h-5 text-rose-500"></i>
+                  <span>مؤشر أسباب تأخر إنجاز الفواتير حسب المقاول</span>
+                </h3>
+                <span class="text-xs font-bold text-slate-400">أكثر 5 مقاولين عليهم ملاحظات</span>
+              </div>
+              <div class="h-72 relative">
+                <canvas id="chartDelayByContractor"></canvas>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ========== MODULE 2: ALL INVOICES MANAGEMENT ========== -->
+        <div id="sec_invoices" class="hidden space-y-5 animate-fade-up">
+          <!-- Filters Card -->
+          <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 space-y-4">
+            <div class="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <h3 class="text-base font-black text-navy-900">سجل ومراجعة فواتير الصيانة والطوارئ</h3>
+                <p id="invTableCountLabel" class="text-xs font-extrabold text-accent-600 mt-0.5">جميع بيانات الجدول وعددها (0)</p>
+              </div>
+              <div class="flex flex-wrap items-center gap-2">
+                <button id="btnBulkApprove" onclick="bulkApproveSelected()" class="hidden px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-extrabold flex items-center gap-1.5 transition">
+                  <i data-lucide="check-check" class="w-4 h-4"></i>
+                  <span>اعتماد المحدد (<span id="selectedRowsCount">0</span>)</span>
+                </button>
+                <button id="btnStaffAddInvoice" onclick="openStaffAddInvoiceModal()" class="px-3.5 py-2 rounded-xl bg-navy-900 hover:bg-navy-800 text-white text-xs font-extrabold flex items-center gap-1.5 transition">
+                  <i data-lucide="plus" class="w-4 h-4"></i>
+                  <span>إضافة فاتورة</span>
+                </button>
+                <button onclick="exportVisibleStaffInvoicesExcel()" class="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-extrabold flex items-center gap-1.5 shadow-sm transition">
+                  <i data-lucide="file-spreadsheet" class="w-4 h-4"></i>
+                  <span>تصدير Excel</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Filter Inputs (Including Month/Date Filter!) -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7 gap-2.5">
+              <input type="text" id="invSearch" oninput="renderStaffInvoicesTable()" placeholder="بحث (أمر عمل / موقع / وصف)..."
+                class="rounded-xl border border-slate-300 bg-slate-50 py-2 px-3 text-xs font-bold outline-none" />
+              <select id="invFilterContractor" onchange="renderStaffInvoicesTable()" class="rounded-xl border border-slate-300 bg-slate-50 py-2 px-3 text-xs font-bold outline-none">
+                <option value="">كل المقاولين</option>
+              </select>
+              <select id="invFilterOffice" onchange="renderStaffInvoicesTable()" class="rounded-xl border border-slate-300 bg-slate-50 py-2 px-3 text-xs font-bold outline-none">
+                <option value="">كل المكاتب</option>
+              </select>
+              <select id="invFilterWorkType" onchange="renderStaffInvoicesTable()" class="rounded-xl border border-slate-300 bg-slate-50 py-2 px-3 text-xs font-bold outline-none">
+                <option value="">كل أنواع الأعمال</option>
+              </select>
+              <select id="invFilterStatus" onchange="renderStaffInvoicesTable()" class="rounded-xl border border-slate-300 bg-slate-50 py-2 px-3 text-xs font-bold outline-none">
+                <option value="">كل الحالات</option>
+                <option value="معتمد">معتمد</option>
+                <option value="قيد المراجعة">قيد المراجعة</option>
+                <option value="مرفوض">مرفوض</option>
+                <option value="ملاحظات معلقة">ملاحظات معلقة</option>
+              </select>
+              <select id="invFilterSla" onchange="renderStaffInvoicesTable()" class="rounded-xl border border-slate-300 bg-slate-50 py-2 px-3 text-xs font-bold outline-none">
+                <option value="">كل التصنيفات</option>
+                <option value="جديد">جديد (1-3 أيام)</option>
+                <option value="متأخر">متأخر (4-5 أيام)</option>
+                <option value="مصعّد">مصعّد (+5 أيام)</option>
+                <option value="تمت المراجعة">تمت المراجعة</option>
+              </select>
+              <select id="invFilterMonth" onchange="renderStaffInvoicesTable()" class="rounded-xl border border-slate-300 bg-slate-50 py-2 px-3 text-xs font-bold outline-none">
+                <option value="">كل الأشهر والتواريخ</option>
+              </select>
+            </div>
+            <div class="flex justify-end">
+              <button onclick="resetStaffInvoicesFilters()" class="text-xs font-bold text-slate-500 hover:text-navy-900 underline">
+                مسح كافة الفلاتر
+              </button>
+            </div>
+          </div>
+
+          <!-- Table Container (Selectable/Copyable + Horizontal & Vertical Scrollbars) -->
+          <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+            <div id="staffTableScrollWrap" class="overflow-auto max-h-[62vh] select-text">
+              <table class="w-full text-xs text-right border-collapse min-w-[1650px]">
+                <thead class="bg-navy-900 text-white sticky top-0 z-10">
+                  <tr>
+                    <th class="p-3 text-center w-10">
+                      <input type="checkbox" id="selectAllInvoices" onchange="toggleSelectAllInvoices(this)" class="w-4 h-4 accent-accent-500" />
+                    </th>
+                    <th class="p-3 font-extrabold">رقم أمر العمل</th>
+                    <th class="p-3 font-extrabold">المقاول</th>
+                    <th class="p-3 font-extrabold">الاستشاري</th>
+                    <th class="p-3 font-extrabold">تاريخ الفاتورة</th>
+                    <th class="p-3 font-extrabold">نوع العمل</th>
+                    <th class="p-3 font-extrabold">وصف العمل</th>
+                    <th class="p-3 font-extrabold">نوع المعدة</th>
+                    <th class="p-3 font-extrabold">الموقع الوظيفي</th>
+                    <th class="p-3 font-extrabold">المكتب</th>
+                    <th class="p-3 font-extrabold">تاريخ التسليم للأصول</th>
+                    <th class="p-3 font-extrabold text-center">المدة</th>
+                    <th class="p-3 font-extrabold text-center">التصنيف</th>
+                    <th class="p-3 font-extrabold">الحالة</th>
+                    <th class="p-3 font-extrabold text-center">المرفقات</th>
+                    <th class="p-3 font-extrabold text-center">إجراءات</th>
+                  </tr>
+                </thead>
+                <tbody id="staffInvoicesTbody" class="divide-y divide-slate-100 bg-white"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- ========== MODULE 3: REPORTS & FULL EXPORT ========== -->
+        <div id="sec_reports" class="hidden space-y-6 animate-fade-up">
+          <!-- Export Actions Banner -->
+          <div class="bg-gradient-to-l from-navy-900 to-navy-800 text-white rounded-2xl p-6 shadow-md flex flex-wrap items-center justify-between gap-4">
+            <div>
+              <h3 class="text-lg font-black">مركز التقارير والتصدير الشامل</h3>
+              <p class="text-xs text-slate-300 mt-1">استخراج التقرير التنفيذي الكامل PDF وملفات Excel متعددة الأوراق مع بطاقة أداء المقاولين</p>
+            </div>
+            <div class="flex flex-wrap gap-2.5">
+              <button onclick="openExecutiveReportPreview()" class="px-5 py-2.5 rounded-xl bg-accent-500 hover:bg-accent-600 text-white text-xs font-extrabold flex items-center gap-2 shadow-lg transition">
+                <i data-lucide="file-text" class="w-4 h-4"></i>
+                <span>تصدير تقرير تنفيذي كامل PDF</span>
+              </button>
+              <button onclick="exportFullExcel()" class="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-extrabold flex items-center gap-2 shadow-lg transition">
+                <i data-lucide="file-spreadsheet" class="w-4 h-4"></i>
+                <span>تصدير ملف Excel شامل (3 أوراق)</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Contractor Performance Scorecard -->
+          <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 sm:p-6 space-y-4">
+            <h3 class="text-base font-black text-navy-900 flex items-center gap-2">
+              <i data-lucide="award" class="w-5 h-5 text-accent-500"></i>
+              <span>بطاقة أداء المقاولين حسب نوع العمل وحالة الاعتماد</span>
+            </h3>
+            <div class="overflow-auto rounded-xl border border-slate-200">
+              <table class="w-full text-xs text-right border-collapse min-w-[950px]">
+                <thead class="bg-navy-900 text-white">
+                  <tr>
+                    <th class="p-3 font-extrabold">المقاول</th>
+                    <th class="p-3 font-extrabold text-center">الإجمالي</th>
+                    <th class="p-3 font-extrabold text-center">طوارئ</th>
+                    <th class="p-3 font-extrabold text-center">صيانة معدة</th>
+                    <th class="p-3 font-extrabold text-center">صيانة مغذي</th>
+                    <th class="p-3 font-extrabold text-center">C4C</th>
+                    <th class="p-3 font-extrabold text-center">معتمد</th>
+                    <th class="p-3 font-extrabold text-center">مرفوض / ملاحظات</th>
+                    <th class="p-3 font-extrabold text-center">نسبة الاعتماد</th>
+                  </tr>
+                </thead>
+                <tbody id="reportsScorecardTbody" class="divide-y divide-slate-100"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- ========== MODULE 4: USERS, CONTRACTORS & AUDIT LOG ========== -->
+        <div id="sec_users" class="hidden space-y-6 animate-fade-up">
+          <div class="grid grid-cols-1 xl:grid-cols-12 gap-6">
+            <!-- Staff Accounts & Permissions Manager -->
+            <div class="xl:col-span-7 bg-white rounded-2xl shadow-sm border border-slate-200 p-5 space-y-4">
+              <div class="flex items-center justify-between">
+                <div>
+                  <h3 class="text-base font-black text-navy-900">حسابات موظفي الشركة والصلاحيات (15 موظفاً)</h3>
+                  <p class="text-xs text-slate-500">يمكن للأدمن (100889) تعديل صلاحيات كل موظف مباشرة</p>
+                </div>
+              </div>
+              <div class="overflow-auto max-h-96 rounded-xl border border-slate-200">
+                <table class="w-full text-xs text-right border-collapse">
+                  <thead class="bg-navy-900 text-white sticky top-0">
+                    <tr>
+                      <th class="p-2.5 font-extrabold">الرقم الوظيفي</th>
+                      <th class="p-2.5 font-extrabold">اسم الموظف</th>
+                      <th class="p-2.5 font-extrabold">الصلاحية</th>
+                      <th class="p-2.5 font-extrabold text-center">إعادة كلمة السر</th>
+                    </tr>
+                  </thead>
+                  <tbody id="staffUsersTbody" class="divide-y divide-slate-100"></tbody>
+                </table>
+              </div>
+            </div>
+
+            <!-- Contractors Directory & PIN Manager -->
+            <div class="xl:col-span-5 bg-white rounded-2xl shadow-sm border border-slate-200 p-5 space-y-4">
+              <div class="flex items-center justify-between gap-2">
+                <div>
+                  <h3 class="text-base font-black text-navy-900">دليل المقاولين وكلمات السر (31 مقاولاً)</h3>
+                  <p class="text-xs text-slate-500">تعديل الرقم السري وتفعيل/إيقاف الحساب</p>
+                </div>
+                <button id="btnAddContractor" onclick="openAddContractorModal()" class="px-3 py-1.5 rounded-xl bg-accent-500 hover:bg-accent-600 text-white text-xs font-bold">
+                  + مقاول جديد
+                </button>
+              </div>
+              <input type="text" id="adminContractorSearch" oninput="renderUsersManagement()" placeholder="بحث باسم المقاول..."
+                class="w-full rounded-xl border border-slate-300 bg-slate-50 py-2 px-3 text-xs font-bold outline-none" />
+              <div class="overflow-auto max-h-80 rounded-xl border border-slate-200">
+                <table class="w-full text-xs text-right border-collapse">
+                  <thead class="bg-slate-100 text-navy-900 sticky top-0">
+                    <tr>
+                      <th class="p-2.5 font-extrabold">المقاول</th>
+                      <th class="p-2.5 font-extrabold text-center">الرقم السري</th>
+                      <th class="p-2.5 font-extrabold text-center">الحالة</th>
+                    </tr>
+                  </thead>
+                  <tbody id="contractorsDirTbody" class="divide-y divide-slate-100"></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <!-- Audit Log -->
+          <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 space-y-3">
+            <h3 class="text-base font-black text-navy-900 flex items-center gap-2">
+              <i data-lucide="history" class="w-5 h-5 text-accent-500"></i>
+              <span>سجل التدقيق والنشاطات</span>
+            </h3>
+            <div class="overflow-auto max-h-64 rounded-xl border border-slate-200">
+              <table class="w-full text-xs text-right border-collapse">
+                <thead class="bg-slate-100 text-navy-900 sticky top-0">
+                  <tr>
+                    <th class="p-2.5 font-extrabold">الوقت والتاريخ</th>
+                    <th class="p-2.5 font-extrabold">المستخدم</th>
+                    <th class="p-2.5 font-extrabold">العملية</th>
+                    <th class="p-2.5 font-extrabold">التفاصيل</th>
+                  </tr>
+                </thead>
+                <tbody id="auditLogTbody" class="divide-y divide-slate-100"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- ========== MODULE 5: DROPBOX CLOUD INTEGRATION ========== -->
+        <div id="sec_onedrive" class="hidden space-y-6 animate-fade-up">
+          <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            <div class="lg:col-span-7 bg-white rounded-2xl shadow-sm border border-slate-200 p-6 space-y-5">
+              <div class="flex items-center justify-between gap-3 pb-4 border-b border-slate-100">
+                <div class="flex items-center gap-3">
+                  <div class="w-11 h-11 rounded-2xl bg-sky-100 text-sky-600 flex items-center justify-center">
+                    <i data-lucide="cloud" class="w-6 h-6"></i>
+                  </div>
+                  <div>
+                    <h3 class="text-base font-extrabold text-navy-900">إعدادات الربط السحابي مع Dropbox</h3>
+                    <p class="text-xs text-slate-500">إنشاء مجلد لكل مقاول وبداخله مجلد برقم أمر العمل ورفع الصور مباشرة عبر Dropbox API</p>
+                  </div>
+                </div>
+                <span id="odStatusBadge" class="text-xs font-extrabold px-3 py-1 rounded-full bg-amber-100 text-amber-800">غير متصل</span>
+              </div>
+
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label class="block text-xs font-extrabold text-navy-900 mb-1.5">مفتاح تطبيق Dropbox (App Key)</label>
+                  <input type="text" id="odClientId" placeholder="مثال: abc123xyz789"
+                    class="w-full rounded-xl border border-slate-300 bg-slate-50 py-2.5 px-3.5 text-xs font-mono outline-none" dir="ltr" />
+                </div>
+                <div>
+                  <label class="block text-xs font-extrabold text-navy-900 mb-1.5">المجلد الأساسي على Dropbox</label>
+                  <input type="text" id="odBaseFolder" value="/فواتير_الصيانة_والطوارئ"
+                    class="w-full rounded-xl border border-slate-300 bg-slate-50 py-2.5 px-3.5 text-xs font-bold outline-none" />
+                </div>
+                <div class="sm:col-span-2">
+                  <label class="block text-xs font-extrabold text-navy-900 mb-1.5">رمز الوصول المباشر (Dropbox Access Token)</label>
+                  <input type="password" id="odAccessToken" placeholder="الصق Dropbox Access Token أو اضغط زر ربط حساب Dropbox أدناه"
+                    class="w-full rounded-xl border border-slate-300 bg-slate-50 py-2.5 px-3.5 text-xs font-mono outline-none" dir="ltr" />
+                </div>
+              </div>
+
+              <div class="flex flex-wrap gap-2.5 pt-2">
+                <button type="button" onclick="saveOneDriveConfig()" class="px-4 py-2.5 rounded-xl bg-navy-900 hover:bg-navy-800 text-white text-xs font-bold transition">
+                  حفظ الإعدادات
+                </button>
+                <button type="button" onclick="connectOneDriveOAuth()" class="px-4 py-2.5 rounded-xl bg-sky-600 hover:bg-sky-700 text-white text-xs font-bold flex items-center gap-1.5 transition">
+                  <i data-lucide="link-2" class="w-4 h-4"></i>
+                  <span>ربط حساب Dropbox الآن</span>
+                </button>
+                <button type="button" onclick="verifyOneDriveToken()" class="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center gap-1.5 transition">
+                  <i data-lucide="check-circle-2" class="w-4 h-4"></i>
+                  <span>فحص الاتصال</span>
+                </button>
+                <button type="button" onclick="syncLocalPhotosToOneDrive()" class="px-4 py-2.5 rounded-xl bg-accent-500 hover:bg-accent-600 text-white text-xs font-bold flex items-center gap-1.5 transition">
+                  <i data-lucide="refresh-cw" class="w-4 h-4"></i>
+                  <span>مزامنة الصور المحلية إلى Dropbox</span>
+                </button>
+              </div>
+
+              <div class="bg-slate-50 rounded-xl p-4 border border-slate-200 text-xs space-y-2">
+                <h4 class="font-extrabold text-navy-900">خطوات تفعيل الربط الحقيقي مع حساب Dropbox الخاص بالقسم:</h4>
+                <ol class="list-decimal list-inside space-y-1 text-slate-600 leading-relaxed">
+                  <li>سجّل الدخول إلى <span class="font-mono font-bold text-navy-800">dropbox.com/developers/apps</span> واضغط <b>Create app &gt; Scoped access &gt; Full Dropbox</b>.</li>
+                  <li>من تبويب <b>Permissions</b> فعّل الصلاحيتين: <b>files.metadata.write</b> و <b>files.content.write</b> ثم اضغط Submit.</li>
+                  <li>أضف رابط الصفحة الحالية في <b>Redirect URIs</b> أو اضغط <b>Generate access token</b> لنسخ الرمز مباشرة.</li>
+                  <li>الصق <b>App Key</b> أو <b>Access Token</b> أعلاه ثم اضغط «حفظ الإعدادات» و«فحص الاتصال».</li>
+                </ol>
+              </div>
+            </div>
+
+            <!-- Visual Folder Tree Preview -->
+            <div class="lg:col-span-5 bg-white rounded-2xl shadow-sm border border-slate-200 p-6 flex flex-col justify-between">
+              <div>
+                <h3 class="text-base font-extrabold text-navy-900 mb-1 flex items-center gap-2">
+                  <i data-lucide="folder-tree" class="w-5 h-5 text-accent-500"></i>
+                  <span>هيكل المجلدات التلقائي على Dropbox</span>
+                </h3>
+                <p class="text-xs text-slate-500 mb-4">المجلد الأساسي ⇐ مجلد باسم المقاول ⇐ مجلد برقم أمر العمل ⇐ الصور المرفقة</p>
+                <div id="odFolderTreePreview" class="bg-navy-950 text-sky-100 rounded-2xl p-4 font-mono text-xs space-y-1.5 overflow-y-auto max-h-80" dir="ltr"></div>
+              </div>
+              <div class="mt-4 p-3 rounded-xl bg-sky-50 border border-sky-200 text-xs text-sky-900 font-semibold">
+                إجمالي الصور المؤرشفة في المنصة حالياً: <span id="odTotalPhotosCount" class="font-extrabold text-sky-700">0</span> صورة
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- ==================== MODALS ==================== -->
+
+  <!-- 1. Reset Password Modal -->
+  <div id="resetPasswordModal" class="hidden fixed inset-0 z-[9000] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-white rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl animate-fade-up">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+        <h3 class="text-base font-black text-navy-900 flex items-center gap-2">
+          <i data-lucide="key-round" class="w-5 h-5 text-accent-500"></i>
+          <span>إعادة تعيين كلمة المرور</span>
+        </h3>
+        <button onclick="closeModal('resetPasswordModal')" class="p-1.5 rounded-lg bg-slate-100 hover:bg-rose-100 text-slate-600"><i data-lucide="x" class="w-4 h-4"></i></button>
+      </div>
+      <form onsubmit="handleResetPassword(event)" class="space-y-3.5">
+        <div>
+          <label class="block text-xs font-extrabold text-navy-900 mb-1">الرقم الوظيفي</label>
+          <input type="text" id="rpEmpId" required class="w-full rounded-xl border border-slate-300 bg-slate-50 py-2.5 px-3 text-sm font-bold outline-none" dir="ltr" />
+        </div>
+        <div>
+          <label class="block text-xs font-extrabold text-navy-900 mb-1">كلمة المرور الجديدة</label>
+          <input type="password" id="rpNewPass" required minlength="4" placeholder="4 أحرف أو أرقام على الأقل" class="w-full rounded-xl border border-slate-300 bg-slate-50 py-2.5 px-3 text-sm font-bold outline-none" dir="ltr" />
+        </div>
+        <div>
+          <label class="block text-xs font-extrabold text-navy-900 mb-1">تأكيد كلمة المرور الجديدة</label>
+          <input type="password" id="rpConfirmPass" required minlength="4" class="w-full rounded-xl border border-slate-300 bg-slate-50 py-2.5 px-3 text-sm font-bold outline-none" dir="ltr" />
+        </div>
+        <button type="submit" class="w-full py-3 rounded-xl bg-navy-900 hover:bg-navy-800 text-white text-sm font-extrabold transition">
+          حفظ كلمة المرور الجديدة
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- 2. Invoice Review Modal -->
+  <div id="reviewModal" class="hidden fixed inset-0 z-[9000] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-white rounded-3xl max-w-3xl w-full max-h-[90vh] flex flex-col shadow-2xl animate-fade-up overflow-hidden">
+      <div class="bg-navy-900 text-white px-6 py-4 flex items-center justify-between">
+        <div>
+          <h3 id="rmTitle" class="text-base font-black">مراجعة واعتماد الفاتورة</h3>
+          <p id="rmSubTitle" class="text-xs text-slate-300 mt-0.5"></p>
+        </div>
+        <button onclick="closeModal('reviewModal')" class="p-1.5 rounded-lg bg-white/10 hover:bg-rose-500 text-white"><i data-lucide="x" class="w-4 h-4"></i></button>
+      </div>
+
+      <div class="p-6 overflow-y-auto space-y-5 flex-1">
+        <input type="hidden" id="rmInvoiceId" />
+        <div id="rmDetailsGrid" class="grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs"></div>
+
+        <!-- Attached Photos -->
+        <div>
+          <h4 class="text-xs font-extrabold text-navy-900 mb-2 flex items-center gap-1.5">
+            <i data-lucide="images" class="w-4 h-4 text-accent-500"></i>
+            <span>الصور المرفقة ومسار Dropbox</span>
+          </h4>
+          <div id="rmPhotosGrid" class="grid grid-cols-2 sm:grid-cols-4 gap-3"></div>
+        </div>
+
+        <!-- Staff Decision Controls -->
+        <div id="rmDecisionBox" class="bg-slate-50 rounded-2xl p-4 border border-slate-200 space-y-4">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label class="block text-xs font-extrabold text-navy-900 mb-1">قرار المراجعة</label>
+              <select id="rmStatus" class="w-full rounded-xl border border-slate-300 bg-white py-2.5 px-3 text-xs font-bold outline-none">
+                <option value="معتمد">معتمد (تم)</option>
+                <option value="قيد المراجعة">قيد المراجعة</option>
+                <option value="مرفوض">مرفوض (غير معتمد)</option>
+                <option value="ملاحظات معلقة">ملاحظات معلقة</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-xs font-extrabold text-navy-900 mb-1">تقييم جودة التنفيذ</label>
+              <select id="rmQuality" class="w-full rounded-xl border border-slate-300 bg-white py-2.5 px-3 text-xs font-bold outline-none">
+                <option value="ممتاز">ممتاز</option>
+                <option value="جيد جداً">جيد جداً</option>
+                <option value="جيد">جيد</option>
+                <option value="سوء جودة التنفيذ">سوء جودة التنفيذ</option>
+              </select>
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-xs font-extrabold text-navy-900 mb-1.5">ملاحظات سريعة (اضغط للإضافة)</label>
+            <div id="rmQuickNotesChips" class="flex flex-wrap gap-1.5 mb-2"></div>
+            <textarea id="rmNote" rows="2" placeholder="اكتب سبب الرفض أو الملاحظة الفنية هنا..."
+              class="w-full rounded-xl border border-slate-300 bg-white p-3 text-xs font-bold outline-none"></textarea>
+          </div>
+        </div>
+      </div>
+
+      <div class="px-6 py-4 bg-slate-50 border-t border-slate-200 flex flex-wrap items-center justify-between gap-2">
+        <button id="rmDeleteBtn" type="button" onclick="deleteCurrentReviewInvoice()" class="px-4 py-2 rounded-xl bg-rose-100 hover:bg-rose-600 text-rose-700 hover:text-white text-xs font-extrabold transition">
+          حذف الفاتورة
+        </button>
+        <div class="flex items-center gap-2">
+          <button type="button" onclick="closeModal('reviewModal')" class="px-4 py-2 rounded-xl bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-bold">إغلاق</button>
+          <button id="rmSaveBtn" type="button" onclick="saveReviewDecision()" class="px-5 py-2 rounded-xl bg-navy-900 hover:bg-navy-800 text-white text-xs font-extrabold transition">
+            حفظ القرار
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 3. Staff Add Invoice Modal -->
+  <div id="staffAddModal" class="hidden fixed inset-0 z-[9000] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-white rounded-3xl max-w-2xl w-full p-6 space-y-4 shadow-2xl max-h-[90vh] overflow-y-auto animate-fade-up">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+        <h3 class="text-base font-black text-navy-900">إضافة فاتورة جديدة (بواسطة موظف الشركة)</h3>
+        <button onclick="closeModal('staffAddModal')" class="p-1.5 rounded-lg bg-slate-100"><i data-lucide="x" class="w-4 h-4"></i></button>
+      </div>
+      <form onsubmit="handleStaffAddInvoice(event)" class="grid grid-cols-1 sm:grid-cols-2 gap-3.5 text-xs">
+        <div>
+          <label class="block font-extrabold mb-1">رقم أمر العمل *</label>
+          <input type="text" id="saWo" required class="w-full rounded-xl border border-slate-300 bg-slate-50 py-2.5 px-3 font-bold" dir="ltr" />
+        </div>
+        <div>
+          <label class="block font-extrabold mb-1">المقاول *</label>
+          <select id="saContractor" required class="w-full rounded-xl border border-slate-300 bg-slate-50 py-2.5 px-3 font-bold"></select>
+        </div>
+        <div>
+          <label class="block font-extrabold mb-1">الاستشاري *</label>
+          <select id="saConsultant" required class="w-full rounded-xl border border-slate-300 bg-slate-50 py-2.5 px-3 font-bold"></select>
+        </div>
+        <div>
+          <label class="block font-extrabold mb-1">تاريخ الفاتورة *</label>
+          <input type="date" id="saInvoiceDate" required class="w-full rounded-xl border border-slate-300 bg-slate-50 py-2.5 px-3 font-bold" />
+        </div>
+        <div>
+          <label class="block font-extrabold mb-1">نوع العمل *</label>
+          <select id="saWorkType" required class="w-full rounded-xl border border-slate-300 bg-slate-50 py-2.5 px-3 font-bold"></select>
+        </div>
+        <div>
+          <label class="block font-extrabold mb-1">وصف العمل *</label>
+          <input type="text" id="saWorkDesc" list="workDescList" required class="w-full rounded-xl border border-slate-300 bg-slate-50 py-2.5 px-3 font-bold" />
+        </div>
+        <div>
+          <label class="block font-extrabold mb-1">نوع المعدة *</label>
+          <select id="saEquipType" required class="w-full rounded-xl border border-slate-300 bg-slate-50 py-2.5 px-3 font-bold"></select>
+        </div>
+        <div>
+          <label class="block font-extrabold mb-1">الموقع الوظيفي *</label>
+          <input type="text" id="saFuncLoc" required class="w-full rounded-xl border border-slate-300 bg-slate-50 py-2.5 px-3 font-bold" dir="ltr" />
+        </div>
+        <div>
+          <label class="block font-extrabold mb-1">المكتب *</label>
+          <select id="saOffice" required class="w-full rounded-xl border border-slate-300 bg-slate-50 py-2.5 px-3 font-bold"></select>
+        </div>
+        <div>
+          <label class="block font-extrabold mb-1">تاريخ التسليم للأصول *</label>
+          <input type="date" id="saDeliveryDate" required class="w-full rounded-xl border border-slate-300 bg-slate-50 py-2.5 px-3 font-bold" />
+        </div>
+        <div class="sm:col-span-2 flex justify-end gap-2 pt-2">
+          <button type="button" onclick="closeModal('staffAddModal')" class="px-4 py-2.5 rounded-xl bg-slate-200 font-bold">إلغاء</button>
+          <button type="submit" class="px-5 py-2.5 rounded-xl bg-navy-900 text-white font-extrabold">حفظ الفاتورة</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- 4. Add Contractor Modal -->
+  <div id="addContractorModal" class="hidden fixed inset-0 z-[9000] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-white rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl animate-fade-up">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+        <h3 class="text-base font-black text-navy-900">إضافة مقاول جديد</h3>
+        <button onclick="closeModal('addContractorModal')" class="p-1.5 rounded-lg bg-slate-100"><i data-lucide="x" class="w-4 h-4"></i></button>
+      </div>
+      <form onsubmit="handleAddContractor(event)" class="space-y-3 text-xs">
+        <div>
+          <label class="block font-extrabold mb-1">اسم المقاول / المؤسسة</label>
+          <input type="text" id="ncName" required class="w-full rounded-xl border border-slate-300 bg-slate-50 py-2.5 px-3 font-bold" />
+        </div>
+        <div>
+          <label class="block font-extrabold mb-1">الرقم السري (أرقام)</label>
+          <input type="text" id="ncPin" required value="1032" class="w-full rounded-xl border border-slate-300 bg-slate-50 py-2.5 px-3 font-bold" dir="ltr" />
+        </div>
+        <button type="submit" class="w-full py-3 rounded-xl bg-accent-500 text-white font-extrabold">إضافة المقاول</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- 5. Lightbox Modal -->
+  <div id="lightboxModal" onclick="closeModal('lightboxModal')" class="hidden fixed inset-0 z-[9800] bg-black/85 flex items-center justify-center p-4">
+    <div class="max-w-3xl w-full space-y-3 text-center" onclick="event.stopPropagation()">
+      <img id="lightboxImg" src="" alt="معاينة الصورة" class="max-h-[75vh] mx-auto rounded-2xl shadow-2xl border border-white/20 bg-white" />
+      <p id="lightboxCaption" class="text-xs font-bold text-white"></p>
+      <button onclick="closeModal('lightboxModal')" class="px-5 py-2 rounded-xl bg-white/15 hover:bg-white/25 text-white text-xs font-bold">إغلاق</button>
+    </div>
+  </div>
+
+  <!-- 6. Report / Dashboard PDF Print & Export Modal -->
+  <div id="reportPreviewModal" class="hidden fixed inset-0 z-[9200] bg-black/70 backdrop-blur-sm flex items-center justify-center p-3 sm:p-6">
+    <div class="bg-white rounded-3xl max-w-6xl w-full max-h-[94vh] flex flex-col shadow-2xl overflow-hidden animate-fade-up">
+      <div class="bg-navy-900 text-white px-5 py-3.5 flex flex-wrap items-center justify-between gap-3">
+        <div class="flex items-center gap-2">
+          <i data-lucide="file-text" class="w-5 h-5 text-accent-400"></i>
+          <h3 id="reportModalTitle" class="text-sm sm:text-base font-black">معاينة التقرير التنفيذي (جاهز للحفظ كـ PDF)</h3>
+        </div>
+        <div class="flex flex-wrap items-center gap-2">
+          <button id="btnDownloadDirectPdf" onclick="downloadPreviewAsPdf()" class="px-4 py-2 rounded-xl bg-accent-500 hover:bg-accent-600 text-white text-xs font-extrabold flex items-center gap-1.5 transition">
+            <i data-lucide="download" class="w-4 h-4"></i>
+            <span>حفظ PDF مباشرة</span>
+          </button>
+          <button onclick="downloadPreviewAsHtml()" class="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-extrabold flex items-center gap-1.5 transition">
+            <i data-lucide="file-code" class="w-4 h-4"></i>
+            <span>تنزيل HTML للطباعة</span>
+          </button>
+          <button onclick="window.print()" class="px-3.5 py-2 rounded-xl bg-white/15 hover:bg-white/25 text-white text-xs font-bold flex items-center gap-1.5 transition">
+            <i data-lucide="printer" class="w-4 h-4"></i>
+            <span>طباعة</span>
+          </button>
+          <button onclick="closeModal('reportPreviewModal')" class="p-2 rounded-xl bg-white/10 hover:bg-rose-500 text-white">
+            <i data-lucide="x" class="w-4 h-4"></i>
+          </button>
+        </div>
+      </div>
+      <div class="p-4 sm:p-6 overflow-y-auto bg-slate-100 flex-1">
+        <div id="printArea" class="bg-white rounded-2xl shadow-sm p-5 sm:p-7 space-y-6"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== APPLICATION SCRIPT ==================== -->
+  <script>
+    // Register ChartDataLabels plugin safely
+    if (typeof Chart !== 'undefined' && typeof ChartDataLabels !== 'undefined') {
+      Chart.register(ChartDataLabels);
+    }
+
+    // ==================== CONSTANTS & REFERENCE DATA ====================
+    const STORAGE_KEY = 'sec_maint_platform_v4_2026';
+
+    const DEFAULT_STAFF = [
+      { id: '100889', name: 'المعتز محمد ابوطالب', password: '1234', role: 'admin' },
+      { id: '78620', name: 'عماد احمد عقيلي', password: '1234', role: 'reviewer' },
+      { id: '66288', name: 'يوسف ال جحيف', password: '1234', role: 'reviewer' },
+      { id: '114073', name: 'عبدالعزيز حكمي', password: '1234', role: 'reviewer' },
+      { id: '114084', name: 'عبدالعزيز النعمي', password: '1234', role: 'reviewer' },
+      { id: '110161', name: 'إبراهيم حوذان', password: '1234', role: 'reviewer' },
+      { id: '1077825980', name: 'عبدالرحمن حمود آل عقيل', password: '1234', role: 'reviewer' },
+      { id: '1102794680', name: 'ريان احمد نمري', password: '1234', role: 'reviewer' },
+      { id: '1093540407', name: 'أحمد ماجد صائغ', password: '1234', role: 'reviewer' },
+      { id: '1087282826', name: 'خالد علي الحازمي', password: '1234', role: 'reviewer' },
+      { id: '1101833679', name: 'إبراهيم علي حكمي', password: '1234', role: 'reviewer' },
+      { id: '1109735108', name: 'خالد مجلي كريري', password: '1234', role: 'reviewer' },
+      { id: '1107106401', name: 'علي احمد الغريب', password: '1234', role: 'reviewer' },
+      { id: '1091959393', name: 'محمد احمد مسلماني', password: '1234', role: 'reviewer' },
+      { id: '1079857098', name: 'عبدالعزيز هاشم صيقل', password: '1234', role: 'reviewer' }
+    ];
+
+    const CONTRACTOR_NAMES = [
+      'الشركة العالمية', 'مؤسسة كنان العربية', 'شركة ديار الوطن', 'شركة رابكوا',
+      'شركة هيف', 'شركة بن دلامة', 'مؤسسة سعيد عبدالله القحطاني', 'مؤسسة عباجة',
+      'شركة مستورة', 'شركة اسناد الطرق', 'شركة الجهاز', 'مؤسسة ركن الفايزية',
+      'مؤسسة قوى البنية', 'البحر المتوسط', 'شركة الجازع', 'شركة الجناحين',
+      'شركة الجوان المطوره', 'شركة الراجحي', 'شركة السبق العربي', 'شركة الطموح الجديد',
+      'شركة بكري الصعب', 'شركة دسر العربية', 'شركة ناصر الوبران', 'مؤسسة اعمار الجنوب',
+      'مؤسسة المدخلي', 'مؤسسة المنجوف', 'مؤسسة سليمان القسومي', 'مؤسسة أصالة الجزيرة',
+      'شركة العرض الانشائي', 'شركة الحمزي', 'مؤسسة ساند للاعمال'
+    ];
+
+    const DEFAULT_CONTRACTORS = CONTRACTOR_NAMES.map((name, i) => ({
+      name,
+      pin: String(1001 + i),
+      active: true
+    }));
+
+    const CONSULTANTS = ['علوم العمران', 'سعود كونسلت', 'محرم باخوم', 'حسن فقية'];
+    const WORK_TYPES = ['طوارئ', 'صيانة معدة', 'صيانة مغذي', 'C4C'];
+    const EQUIP_TYPES = ['OH', 'RMU', 'TR', 'UNIT+RMU', 'SWITCH', 'ROOM', 'MINIPILER', 'UNIT', 'LVPD', 'LBS', 'REC', 'PACKAGE', 'مغذي', 'عمود'];
+    const OFFICES = ['صبيا', 'أبو عريش', 'فيفا', 'بيش', 'الحقو', 'جيزان', 'صامطة', 'بني مالك'];
+    const WORK_DESCS = [
+      'فحص وصيانة معدة', 'استبدال محول', 'عمل وصلة مستقيمة لكيبل مضروب', 'استبدال وحدة حلقية',
+      'استبدال عمود', 'نهايه طرفيه', 'تمديد كيبل وعمل وصلة', 'شد شبكه',
+      'استبدال لوحة توزيع هوائية', 'استبدال عوازل', 'استبدال ميني بيلر', 'حفر وتمديد كيبل'
+    ];
+    const QUICK_REVIEW_NOTES = [
+      'غير معتمد',
+      'عدم توقيع GIS',
+      'عدم إنشاء المعدة على SAP',
+      'ناقص نموذج اختبار ما قبل التشغيل',
+      'ناقص إرفاق المحول',
+      'الموقع الوظيفي ناقص',
+      'صور غير مطابقة للأعمال',
+      'سوء جودة التنفيذ',
+      'عدم الالتزام بالشريط التحذيري'
+    ];
+
+    // ==================== HELPERS ====================
+    function todayISO() {
+      return new Date().toISOString().slice(0, 10);
+    }
+
+    function escapeHtml(str) {
+      return String(str ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+
+    function sanitizeDropboxSegment(str, fallback = 'غير_محدد') {
+      const cleaned = String(str || '').trim().replace(/[\\/:*?"<>|]/g, '-').replace(/\s+/g, ' ');
+      return cleaned || fallback;
+    }
+
+    function buildDropboxPhotoPath(contractor, wo, fileName) {
+      const base = '/' + String(appState.oneDrive.baseFolder || '/فواتير_الصيانة_والطوارئ').replace(/^\/+|\/+$/g, '');
+      const cFolder = sanitizeDropboxSegment(contractor, 'مقاول');
+      const pFolder = sanitizeDropboxSegment(wo, 'مشروع');
+      const safeFile = sanitizeDropboxSegment(fileName, `photo_${Date.now()}.jpg`);
+      return `${base}/${cFolder}/${pFolder}/${safeFile}`;
+    }
+
+    function makeSamplePhotoSvg(wo, stage) {
+      const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="420" height="280">
+        <defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#0B2545"/><stop offset="100%" stop-color="#163b6b"/></linearGradient></defs>
+        <rect width="100%" height="100%" fill="url(#g)" rx="16"/>
+        <circle cx="350" cy="60" r="45" fill="#F26522" opacity="0.25"/>
+        <text x="50%" y="44%" fill="#F26522" font-family="Cairo,sans-serif" font-size="18" font-weight="bold" text-anchor="middle">${stage}</text>
+        <text x="50%" y="58%" fill="#ffffff" font-family="Cairo,sans-serif" font-size="22" font-weight="bold" text-anchor="middle">WO #${wo}</text>
+        <text x="50%" y="74%" fill="#cbd5e1" font-family="Cairo,sans-serif" font-size="12" text-anchor="middle">صورة موثقة — قسم استلام الأصول</text>
+      </svg>`;
+      return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+    }
+
+    // Working Days Calculator (Excludes Friday = 5 & Saturday = 6)
+    function calcWorkingDays(startDateStr) {
+      if (!startDateStr) return 0;
+      const start = new Date(startDateStr + 'T00:00:00');
+      const end = new Date();
+      end.setHours(0, 0, 0, 0);
+      if (isNaN(start.getTime()) || end <= start) return 0;
+      let days = 0;
+      const cur = new Date(start);
+      while (cur < end) {
+        cur.setDate(cur.getDate() + 1);
+        const dow = cur.getDay();
+        if (dow !== 5 && dow !== 6) days++;
+      }
+      return days;
+    }
+
+    function getInvoiceSlaInfo(inv) {
+      if (inv.status !== 'قيد المراجعة') {
+        return { days: null, label: 'تمت المراجعة', cls: 'bg-slate-100 text-slate-600' };
+      }
+      const d = calcWorkingDays(inv.deliveryDate);
+      if (d <= 3) return { days: d, label: 'جديد', cls: 'bg-emerald-100 text-emerald-700' };
+      if (d <= 5) return { days: d, label: 'متأخر', cls: 'bg-amber-100 text-amber-800' };
+      return { days: d, label: 'مصعّد', cls: 'bg-rose-100 text-rose-700' };
+    }
+
+    function getStatusBadgeHtml(inv) {
+      if (inv.status === 'معتمد') {
+        return `<span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-800 font-extrabold text-[11px]">معتمد</span>`;
+      }
+      if (inv.status === 'قيد المراجعة') {
+        return `<span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-sky-100 text-sky-800 font-extrabold text-[11px]">قيد المراجعة</span>`;
+      }
+      if (inv.status === 'مرفوض') {
+        const reason = inv.note && inv.note !== 'غير معتمد' ? inv.note : 'غير معتمد';
+        return `<div class="space-y-1">
+          <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-rose-100 text-rose-800 font-extrabold text-[11px]">مرفوض</span>
+          <p class="text-[11px] font-bold text-rose-700 bg-rose-50 border border-rose-200 rounded-lg px-2 py-0.5 max-w-[200px] leading-snug">السبب: ${escapeHtml(reason)}</p>
+        </div>`;
+      }
+      return `<div class="space-y-1">
+        <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-800 font-extrabold text-[11px]">ملاحظات معلقة</span>
+        ${inv.note ? `<p class="text-[11px] font-bold text-amber-800 max-w-[200px] leading-snug">${escapeHtml(inv.note)}</p>` : ''}
+      </div>`;
+    }
+
+    function showToast(msg, type = 'success') {
+      const box = document.getElementById('toastContainer');
+      const colors = {
+        success: 'bg-emerald-600 text-white',
+        error: 'bg-rose-600 text-white',
+        info: 'bg-navy-900 text-white',
+        warning: 'bg-amber-500 text-white'
+      };
+      const el = document.createElement('div');
+      el.className = `pointer-events-auto px-4 py-3 rounded-2xl shadow-xl text-xs font-extrabold flex items-center justify-between gap-2 animate-fade-up ${colors[type] || colors.info}`;
+      el.innerHTML = `<span>${escapeHtml(msg)}</span>`;
+      box.appendChild(el);
+      setTimeout(() => { el.style.opacity = '0'; el.style.transition = 'opacity 0.3s'; setTimeout(() => el.remove(), 300); }, 3200);
+    }
+
+    function openModal(id) {
+      document.getElementById(id).classList.remove('hidden');
+      lucide.createIcons();
+    }
+    function closeModal(id) {
+      document.getElementById(id).classList.add('hidden');
+    }
+
+    // ==================== SEED 571 AUTHENTIC RECORDS FROM SHEET 1 ====================
+    function buildSeedInvoices() {
+      const rows = [];
+      let idCounter = 1;
+
+      // Exact distributions from DOC-20261119-WA0009.xlsx Sheet 1 (571 total rows)
+      const specs = [
+        { contractor: 'الشركة العالمية', count: 138, consultant: 'سعود كونسلت', office: 'صبيا', workType: 'صيانة معدة', desc: 'فحص وصيانة معدة', equip: 'ROOM', approved: 138, flagged: 0, deliveryDate: '2026-11-03', invDate: '2026-10-05' },
+        { contractor: 'مؤسسة كنان العربية', count: 136, consultant: 'علوم العمران', office: 'أبو عريش', workType: 'طوارئ', desc: 'استبدال محول', equip: 'OH', approved: 73, flagged: 28, deliveryDate: '2026-11-11', invDate: '2026-10-12' },
+        { contractor: 'شركة ديار الوطن', count: 111, consultant: 'محرم باخوم', office: 'بيش', workType: 'طوارئ', desc: 'استبدال محول', equip: 'TR', approved: 2, flagged: 1, deliveryDate: '2026-11-12', invDate: '2026-10-18' },
+        { contractor: 'شركة رابكوا', count: 78, consultant: 'محرم باخوم', office: 'فيفا', workType: 'طوارئ', desc: 'استبدال وحدة حلقية', equip: 'RMU', approved: 0, flagged: 1, deliveryDate: '2026-11-15', invDate: '2026-10-20' },
+        { contractor: 'شركة هيف', count: 30, consultant: 'علوم العمران', office: 'بني مالك', workType: 'طوارئ', desc: 'استبدال محول', equip: 'OH', approved: 1, flagged: 0, deliveryDate: '2026-11-16', invDate: '2026-09-24' },
+        { contractor: 'شركة بن دلامة', count: 29, consultant: 'سعود كونسلت', office: 'صامطة', workType: 'طوارئ', desc: 'نهايه طرفيه', equip: 'SWITCH', approved: 0, flagged: 0, deliveryDate: '2026-11-12', invDate: '2026-10-08' },
+        { contractor: 'مؤسسة سعيد عبدالله القحطاني', count: 22, consultant: 'حسن فقية', office: 'الحقو', workType: 'طوارئ', desc: 'عمل وصلة مستقيمة لكيبل مضروب', equip: 'RMU', approved: 1, flagged: 0, deliveryDate: '2026-11-17', invDate: '2026-10-14' },
+        { contractor: 'مؤسسة عباجة', count: 19, consultant: 'علوم العمران', office: 'جيزان', workType: 'طوارئ', desc: 'عمل وصلة مستقيمة لكيبل مضروب', equip: 'MINIPILER', approved: 0, flagged: 1, deliveryDate: '2026-11-16', invDate: '2026-09-27' },
+        { contractor: 'شركة مستورة', count: 5, consultant: 'علوم العمران', office: 'أبو عريش', workType: 'صيانة مغذي', desc: 'استبدال عوازل', equip: 'OH', approved: 1, flagged: 0, deliveryDate: '2026-11-18', invDate: '2026-10-01' },
+        { contractor: 'شركة اسناد الطرق', count: 3, consultant: 'سعود كونسلت', office: 'صامطة', workType: 'طوارئ', desc: 'استبدال محول', equip: 'TR', approved: 0, flagged: 1, deliveryDate: '2026-11-11', invDate: '2026-10-19' }
+      ];
+
+      const delayReasonsPool = [
+        'غير معتمد', 'غير معتمد', 'غير معتمد', 'غير معتمد', 'غير معتمد',
+        'عدم توقيع GIS', 'عدم توقيع GIS', 'عدم توقيع GIS',
+        'عدم إنشاء المعدة على SAP', 'عدم إنشاء المعدة على SAP',
+        'ناقص نموذج اختبار ما قبل التشغيل', 'ناقص إرفاق المحول', 'سوء جودة التنفيذ'
+      ];
+
+      const deliveryDatesCycle = ['2026-11-18', '2026-11-17', '2026-11-15', '2026-11-12', '2026-11-10', '2026-11-08', '2026-11-04'];
+      const officeCycle = ['صبيا', 'أبو عريش', 'فيفا', 'بيش', 'الحقو', 'جيزان', 'صامطة', 'بني مالك'];
+
+      let c4cAssigned = 0;
+      let maintAssigned = 0;
+
+      specs.forEach((sp) => {
+        for (let i = 0; i < sp.count; i++) {
+          let wType = sp.workType;
+          let wDesc = sp.desc;
+          let equip = sp.equip;
+
+          // Match exact work-type distribution (323 طوارئ, 232 صيانة معدة, 11 C4C, 5 صيانة مغذي)
+          if (sp.contractor === 'مؤسسة كنان العربية') {
+            if (i < 11) { wType = 'C4C'; wDesc = 'استبدال عمود'; equip = 'OH'; c4cAssigned++; }
+            else if (i < 62) { wType = 'صيانة معدة'; wDesc = 'فحص وصيانة معدة'; equip = 'OH'; maintAssigned++; }
+            else if (i < 82) { wType = 'طوارئ'; wDesc = 'استبدال وحدة حلقية'; equip = 'SWITCH'; }
+            else if (i < 105) { wType = 'طوارئ'; wDesc = 'عمل وصلة مستقيمة لكيبل مضروب'; equip = 'MINIPILER'; }
+          } else if (sp.contractor === 'شركة ديار الوطن' && i < 21) {
+            wType = 'صيانة معدة'; wDesc = 'فحص وصيانة معدة'; equip = 'OH';
+          } else if (sp.contractor === 'شركة رابكوا' && i < 22) {
+            wType = 'صيانة معدة'; wDesc = 'فحص وصيانة معدة'; equip = 'OH';
+          } else if (sp.contractor === 'شركة ديار الوطن' && i >= 21 && i < 34) {
+            wDesc = 'استبدال عمود'; equip = 'عمود';
+          } else if (sp.contractor === 'شركة رابكوا' && i >= 22 && i < 37) {
+            wDesc = 'تمديد كيبل وعمل وصلة'; equip = 'MINIPILER';
+          } else if (sp.contractor === 'شركة هيف' && i < 12) {
+            wDesc = 'شد شبكه'; equip = 'OH';
+          }
+
+          let status = 'قيد المراجعة';
+          let note = 'قيد المراجعة';
+          if (i < sp.approved) {
+            status = 'معتمد';
+            note = 'تم';
+          } else if (i < sp.approved + sp.flagged) {
+            status = 'مرفوض';
+            note = delayReasonsPool[(idCounter + i) % delayReasonsPool.length];
+            if (sp.contractor === 'شركة ديار الوطن') note = 'عدم إنشاء المعدة على SAP';
+            if (sp.contractor === 'شركة رابكوا') note = 'سوء جودة التنفيذ';
+            if (sp.contractor === 'مؤسسة عباجة') note = 'ناقص نموذج اختبار ما قبل التشغيل';
+            if (sp.contractor === 'شركة اسناد الطرق') note = 'عدم توقيع GIS';
+          }
+
+          const wo = String(421900000 + idCounter * 137);
+          const officeVal = i % 4 === 0 ? officeCycle[idCounter % officeCycle.length] : sp.office;
+          const delDate = status === 'قيد المراجعة' ? deliveryDatesCycle[idCounter % deliveryDatesCycle.length] : sp.deliveryDate;
+
+          rows.push({
+            id: 'INV-' + idCounter,
+            wo,
+            contractor: sp.contractor,
+            consultant: sp.consultant,
+            invoiceDate: sp.invDate,
+            workType: wType,
+            workDesc: wDesc,
+            equipType: equip,
+            funcLoc: `4400-JHS-${String(100000 + idCounter * 73).slice(0, 6)}`,
+            office: officeVal,
+            deliveryDate: delDate,
+            note,
+            status,
+            quality: status === 'معتمد' ? 'ممتاز' : 'جيد جداً',
+            checklist: ['توقيع قسم GIS', 'مطابقة الصور لمراحل العمل'],
+            photos: idCounter <= 12 ? [{
+              name: `WO_${wo}_after.jpg`,
+              stage: 'بعد التنفيذ',
+              dataUrl: makeSamplePhotoSvg(wo, 'بعد التنفيذ'),
+              projectName: wo,
+              oneDrivePath: `/فواتير_الصيانة_والطوارئ/${sp.contractor}/${wo}/WO_${wo}_after.jpg`,
+              synced: false
+            }] : []
+          });
+          idCounter++;
+        }
+      });
+
+      return rows;
+    }
+
+    // ==================== APP STATE & PERSISTENCE ====================
+    let appState = {
+      invoices: [],
+      staff: [],
+      contractors: [],
+      auditLog: [],
+      oneDrive: {
+        clientId: '',
+        baseFolder: '/فواتير_الصيانة_والطوارئ',
+        accessToken: '',
+        connectedEmail: ''
+      }
+    };
+
+    let currentSession = null; // { type: 'staff'|'contractor', id, name, role }
+    let pendingPhotos = [];
+    let selectedInvoiceIds = new Set();
+    let activeDrilldownKey = null;
+    let charts = {};
+    let lastReportTitle = 'التقرير_التنفيذي';
+
+    function loadState() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          appState.invoices = Array.isArray(parsed.invoices) && parsed.invoices.length ? parsed.invoices : buildSeedInvoices();
+          appState.staff = Array.isArray(parsed.staff) && parsed.staff.length ? parsed.staff : structuredClone(DEFAULT_STAFF);
+          appState.contractors = Array.isArray(parsed.contractors) && parsed.contractors.length ? parsed.contractors : structuredClone(DEFAULT_CONTRACTORS);
+          appState.auditLog = Array.isArray(parsed.auditLog) ? parsed.auditLog : [];
+          appState.oneDrive = Object.assign({ clientId: '', baseFolder: '/فواتير_الصيانة_والطوارئ', accessToken: '', connectedEmail: '' }, parsed.oneDrive || {});
+          return;
+        }
+      } catch (e) {
+        console.warn('State load fallback:', e);
+      }
+      appState.invoices = buildSeedInvoices();
+      appState.staff = structuredClone(DEFAULT_STAFF);
+      appState.contractors = structuredClone(DEFAULT_CONTRACTORS);
+      appState.auditLog = [{
+        time: new Date().toLocaleString('ar-SA'),
+        user: 'النظام',
+        action: 'تهيئة المنصة',
+        details: `تم تحميل ${appState.invoices.length} فاتورة من ورقة1`
+      }];
+      saveState();
+    }
+
+    function saveState() {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(appState));
+      } catch (e) {
+        console.warn('Storage quota warning:', e);
+      }
+    }
+
+    function logAudit(action, details) {
+      appState.auditLog.unshift({
+        time: new Date().toLocaleString('ar-SA'),
+        user: currentSession ? currentSession.name : 'مستخدم',
+        action,
+        details
+      });
+      if (appState.auditLog.length > 200) appState.auditLog.length = 200;
+      saveState();
+    }
+
+    // ==================== LOGIN & SESSION FLOW ====================
+    function switchLoginTab(tab) {
+      const staffForm = document.getElementById('staffLoginForm');
+      const contForm = document.getElementById('contractorLoginForm');
+      const btnStaff = document.getElementById('tabBtnStaff');
+      const btnCont = document.getElementById('tabBtnContractor');
+
+      if (tab === 'staff') {
+        staffForm.classList.remove('hidden');
+        contForm.classList.add('hidden');
+        btnStaff.className = 'py-2.5 px-3 rounded-xl text-xs sm:text-sm font-extrabold flex items-center justify-center gap-2 transition bg-navy-900 text-white shadow-sm';
+        btnCont.className = 'py-2.5 px-3 rounded-xl text-xs sm:text-sm font-extrabold flex items-center justify-center gap-2 transition text-slate-600 hover:text-navy-900';
+      } else {
+        staffForm.classList.add('hidden');
+        contForm.classList.remove('hidden');
+        btnCont.className = 'py-2.5 px-3 rounded-xl text-xs sm:text-sm font-extrabold flex items-center justify-center gap-2 transition bg-accent-500 text-white shadow-sm';
+        btnStaff.className = 'py-2.5 px-3 rounded-xl text-xs sm:text-sm font-extrabold flex items-center justify-center gap-2 transition text-slate-600 hover:text-navy-900';
+      }
+    }
+
+    function filterContractorDropdown() {
+      const q = (document.getElementById('contractorSearchInput').value || '').trim().toLowerCase();
+      const sel = document.getElementById('loginContractorSelect');
+      const filtered = appState.contractors.filter(c => c.name.toLowerCase().includes(q));
+      sel.innerHTML = filtered.length
+        ? filtered.map(c => `<option value="${escapeHtml(c.name)}">${escapeHtml(c.name)}</option>`).join('')
+        : '<option value="">لا توجد نتائج مطابقة</option>';
+    }
+
+    function showWelcomeSplashThen(name, roleLabel, callback) {
+      const splash = document.getElementById('welcomeSplash');
+      const bar = document.getElementById('welcomeProgressBar');
+      document.getElementById('welcomeSplashName').textContent = `مرحباً، ${name}`;
+      document.getElementById('welcomeSplashRole').textContent = roleLabel;
+      splash.classList.remove('hidden');
+      bar.style.transition = 'none';
+      bar.style.width = '0%';
+      lucide.createIcons();
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          bar.style.transition = 'width 3s linear';
+          bar.style.width = '100%';
+        });
+      });
+      setTimeout(() => {
+        splash.classList.add('hidden');
+        callback();
+      }, 3000);
+    }
+
+    function handleStaffLogin(e) {
+      e.preventDefault();
+      const empId = document.getElementById('loginStaffUsername').value.trim();
+      const pass = document.getElementById('loginStaffPassword').value.trim();
+      const user = appState.staff.find(u => u.id === empId && u.password === pass);
+      if (!user) {
+        showToast('الرقم الوظيفي أو الرقم السري غير صحيح', 'error');
+        return;
+      }
+      currentSession = { type: 'staff', id: user.id, name: user.name, role: user.role };
+      logAudit('تسجيل دخول موظف', `${user.name} (${user.id})`);
+      const roleMap = { admin: 'مدير النظام (صلاحيات كاملة)', reviewer: 'موظف شركة (مراجعة واعتماد)', viewer: 'مراقب (عرض وتقارير)' };
+      document.getElementById('loginScreen').classList.add('hidden');
+      showWelcomeSplashThen(user.name, roleMap[user.role] || 'موظف شركة', () => enterStaffPortal());
+    }
+
+    function handleContractorLogin(e) {
+      e.preventDefault();
+      const name = document.getElementById('loginContractorSelect').value;
+      const pin = document.getElementById('loginContractorPin').value.trim();
+      const c = appState.contractors.find(x => x.name === name);
+      if (!c) { showToast('يرجى اختيار المقاول', 'error'); return; }
+      if (!c.active) { showToast('هذا الحساب موقوف حالياً، يرجى مراجعة القسم', 'error'); return; }
+      if (c.pin !== pin) { showToast('الرقم السري للمقاول غير صحيح', 'error'); return; }
+      currentSession = { type: 'contractor', id: c.name, name: c.name, role: 'contractor' };
+      logAudit('تسجيل دخول مقاول', c.name);
+      document.getElementById('loginScreen').classList.add('hidden');
+      showWelcomeSplashThen(c.name, 'بوابة المقاولين — قسم استلام الأصول', () => enterContractorPortal());
+    }
+
+    function openResetPasswordModal(prefillCurrent = false) {
+      const inp = document.getElementById('rpEmpId');
+      inp.value = prefillCurrent && currentSession?.type === 'staff' ? currentSession.id : (document.getElementById('loginStaffUsername').value || '');
+      document.getElementById('rpNewPass').value = '';
+      document.getElementById('rpConfirmPass').value = '';
+      openModal('resetPasswordModal');
+    }
+
+    function handleResetPassword(e) {
+      e.preventDefault();
+      const empId = document.getElementById('rpEmpId').value.trim();
+      const np = document.getElementById('rpNewPass').value.trim();
+      const cp = document.getElementById('rpConfirmPass').value.trim();
+      if (np !== cp) { showToast('كلمتا المرور غير متطابقتين', 'error'); return; }
+      const user = appState.staff.find(u => u.id === empId);
+      if (!user) { showToast('الرقم الوظيفي غير مسجل في قاعدة البيانات', 'error'); return; }
+      user.password = np;
+      saveState();
+      logAudit('إعادة تعيين كلمة المرور', `تم تحديث كلمة مرور الموظف ${user.name} (${user.id})`);
+      closeModal('resetPasswordModal');
+      showToast('تم تحديث كلمة المرور بنجاح وحفظها في قاعدة البيانات', 'success');
+    }
+
+    function logout() {
+      if (currentSession) logAudit('تسجيل خروج', currentSession.name);
+      currentSession = null;
+      document.getElementById('staffPortal').classList.add('hidden');
+      document.getElementById('contractorPortal').classList.add('hidden');
+      document.getElementById('loginScreen').classList.remove('hidden');
+      document.getElementById('loginStaffPassword').value = '';
+      document.getElementById('loginContractorPin').value = '';
+      switchLoginTab('staff');
+      lucide.createIcons();
+    }
+
+    // ==================== POPULATE STATIC SELECTS ====================
+    function populateStaticSelects() {
+      const fill = (id, arr, withAll = false, allText = 'الكل') => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.innerHTML = (withAll ? `<option value="">${allText}</option>` : '') +
+          arr.map(v => `<option value="${escapeHtml(v)}">${escapeHtml(v)}</option>`).join('');
+      };
+
+      const cNames = appState.contractors.map(c => c.name);
+      fill('loginContractorSelect', cNames);
+      fill('cpConsultant', CONSULTANTS);
+      fill('cpWorkType', WORK_TYPES);
+      fill('cpEquipType', EQUIP_TYPES);
+      fill('cpOffice', OFFICES);
+
+      fill('saContractor', cNames);
+      fill('saConsultant', CONSULTANTS);
+      fill('saWorkType', WORK_TYPES);
+      fill('saEquipType', EQUIP_TYPES);
+      fill('saOffice', OFFICES);
+
+      fill('dashFilterContractor', cNames, true, 'كل المقاولين');
+      fill('dashFilterOffice', OFFICES, true, 'كل المكاتب');
+      fill('dashFilterWorkType', WORK_TYPES, true, 'كل أنواع الأعمال');
+      fill('dashFilterConsultant', CONSULTANTS, true, 'كل الاستشاريين');
+
+      fill('invFilterContractor', cNames, true, 'كل المقاولين');
+      fill('invFilterOffice', OFFICES, true, 'كل المكاتب');
+      fill('invFilterWorkType', WORK_TYPES, true, 'كل أنواع الأعمال');
+
+      const dl = document.getElementById('workDescList');
+      if (dl) dl.innerHTML = WORK_DESCS.map(d => `<option value="${escapeHtml(d)}"></option>`).join('');
+
+      populateMonthFilter();
+    }
+
+    function populateMonthFilter() {
+      const sel = document.getElementById('invFilterMonth');
+      if (!sel) return;
+      const curVal = sel.value;
+      const monthsSet = new Set();
+      appState.invoices.forEach(inv => {
+        if (inv.invoiceDate && inv.invoiceDate.length >= 7) monthsSet.add(inv.invoiceDate.slice(0, 7));
+        if (inv.deliveryDate && inv.deliveryDate.length >= 7) monthsSet.add(inv.deliveryDate.slice(0, 7));
+      });
+      const arMonths = ['يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو', 'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'];
+      const sorted = Array.from(monthsSet).sort().reverse();
+      sel.innerHTML = '<option value="">كل الأشهر والتواريخ</option>' + sorted.map(ym => {
+        const [y, m] = ym.split('-');
+        const label = `شهر ${arMonths[parseInt(m, 10) - 1] || m} ${y}`;
+        return `<option value="${ym}">${label}</option>`;
+      }).join('');
+      if (sorted.includes(curVal)) sel.value = curVal;
+    }
+
+    // ==================== CONTRACTOR PORTAL LOGIC ====================
+    function enterContractorPortal() {
+      document.getElementById('contractorPortal').classList.remove('hidden');
+      document.getElementById('cpContractorName').textContent = currentSession.name;
+      resetContractorForm();
+      renderContractorKPIs();
+      renderContractorTable();
+      lucide.createIcons();
+    }
+
+    function resetContractorForm() {
+      document.getElementById('contractorInvoiceForm').reset();
+      document.getElementById('cpEditId').value = '';
+      document.getElementById('cpFormTitle').textContent = 'رفع فاتورة صيانة / طوارئ جديدة';
+      document.getElementById('cpCancelEditBtn').classList.add('hidden');
+      document.getElementById('cpDeliveryDate').value = todayISO();
+      document.getElementById('cpInvoiceDate').value = todayISO();
+      document.getElementById('cpWoDupWarning').classList.add('hidden');
+      pendingPhotos = [];
+      renderPendingPhotosPreview();
+      document.querySelectorAll('.cp-chk').forEach(c => c.checked = false);
+      updateChecklistProgress();
+    }
+
+    function checkDuplicateWO() {
+      const wo = document.getElementById('cpWo').value.trim();
+      const editId = document.getElementById('cpEditId').value;
+      const exists = wo && appState.invoices.some(inv => inv.wo === wo && inv.id !== editId);
+      document.getElementById('cpWoDupWarning').classList.toggle('hidden', !exists);
+    }
+
+    function updateChecklistProgress() {
+      const all = document.querySelectorAll('.cp-chk');
+      const checked = Array.from(all).filter(c => c.checked).length;
+      const pct = Math.round((checked / all.length) * 100);
+      document.getElementById('cpChecklistPct').textContent = `جاهزية الملف: ${pct}%`;
+      document.getElementById('cpChecklistBar').style.width = `${pct}%`;
+    }
+
+    function compressImageFile(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+          const img = new Image();
+          img.onload = () => {
+            const maxW = 900;
+            const scale = Math.min(1, maxW / img.width);
+            const canvas = document.createElement('canvas');
+            canvas.width = Math.round(img.width * scale);
+            canvas.height = Math.round(img.height * scale);
+            canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+            resolve(canvas.toDataURL('image/jpeg', 0.72));
+          };
+          img.onerror = reject;
+          img.src = ev.target.result;
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+    }
+
+    async function handleContractorPhotosSelected(e) {
+      const files = Array.from(e.target.files || []);
+      if (!files.length) return;
+      const stage = document.getElementById('cpPhotoStage').value;
+      const wo = document.getElementById('cpWo').value.trim() || 'جديد';
+      for (const file of files) {
+        try {
+          const dataUrl = await compressImageFile(file);
+          const safeName = `${Date.now()}_${file.name.replace(/[^\w.\-\u0600-\u06FF]/g, '_')}`;
+          const oneDrivePath = buildDropboxPhotoPath(currentSession.name, wo, safeName);
+          pendingPhotos.push({ name: safeName, stage, dataUrl, projectName: wo, oneDrivePath, synced: false });
+        } catch {
+          showToast('تعذر معالجة إحدى الصور المختارة', 'error');
+        }
+      }
+      e.target.value = '';
+      renderPendingPhotosPreview();
+    }
+
+    function renderPendingPhotosPreview() {
+      const grid = document.getElementById('cpPhotosPreviewGrid');
+      if (!pendingPhotos.length) {
+        grid.innerHTML = '<p class="col-span-full text-xs text-slate-400 text-center py-4">لم يتم إرفاق صور بعد</p>';
+        return;
+      }
+      grid.innerHTML = pendingPhotos.map((p, idx) => `
+        <div class="relative bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm group">
+          <img src="${p.dataUrl}" onclick="openLightbox('${p.dataUrl}', '${escapeHtml(p.stage + ' - ' + p.name)}')" class="w-full h-24 object-cover cursor-pointer" />
+          <div class="p-1.5 text-[10px] font-bold text-navy-900 truncate">${escapeHtml(p.stage)}</div>
+          <button type="button" onclick="removePendingPhoto(${idx})" class="absolute top-1 left-1 w-6 h-6 rounded-full bg-rose-600 text-white flex items-center justify-center text-xs shadow">×</button>
+        </div>
+      `).join('');
+    }
+
+    function removePendingPhoto(idx) {
+      pendingPhotos.splice(idx, 1);
+      renderPendingPhotosPreview();
+    }
+
+    async function handleContractorSubmit(e) {
+      e.preventDefault();
+      const editId = document.getElementById('cpEditId').value;
+      const wo = document.getElementById('cpWo').value.trim();
+      const checklist = Array.from(document.querySelectorAll('.cp-chk:checked')).map(c => c.value);
+
+      for (const p of pendingPhotos) {
+        p.projectName = wo;
+        p.oneDrivePath = buildDropboxPhotoPath(currentSession.name, wo, p.name);
+        if (appState.oneDrive.accessToken && !p.synced) {
+          const ok = await uploadSinglePhotoToDropbox(p);
+          if (ok) p.synced = true;
+        }
+      }
+
+      const payload = {
+        wo,
+        contractor: currentSession.name,
+        consultant: document.getElementById('cpConsultant').value,
+        invoiceDate: document.getElementById('cpInvoiceDate').value,
+        workType: document.getElementById('cpWorkType').value,
+        workDesc: document.getElementById('cpWorkDesc').value.trim(),
+        equipType: document.getElementById('cpEquipType').value,
+        funcLoc: document.getElementById('cpFuncLoc').value.trim(),
+        office: document.getElementById('cpOffice').value,
+        deliveryDate: todayISO(),
+        status: 'قيد المراجعة',
+        note: 'قيد المراجعة',
+        quality: 'جيد جداً',
+        checklist,
+        photos: structuredClone(pendingPhotos)
+      };
+
+      if (editId) {
+        const idx = appState.invoices.findIndex(x => x.id === editId);
+        if (idx >= 0) {
+          appState.invoices[idx] = { ...appState.invoices[idx], ...payload };
+          logAudit('تعديل وإعادة إرسال فاتورة', `أمر عمل ${wo} — ${currentSession.name}`);
+          showToast('تم تعديل الفاتورة وإعادة إرسالها للمراجعة بنجاح', 'success');
+        }
+      } else {
+        appState.invoices.unshift({ id: 'INV-' + Date.now(), ...payload });
+        logAudit('رفع فاتورة جديدة', `أمر عمل ${wo} — ${currentSession.name}`);
+        showToast('تم رفع الفاتورة بنجاح وإرسالها لقسم استلام الأصول', 'success');
+      }
+
+      saveState();
+      populateMonthFilter();
+      resetContractorForm();
+      renderContractorKPIs();
+      renderContractorTable();
+    }
+
+    function editContractorInvoice(id) {
+      const inv = appState.invoices.find(x => x.id === id && x.contractor === currentSession.name);
+      if (!inv) return;
+      document.getElementById('cpEditId').value = inv.id;
+      document.getElementById('cpFormTitle').textContent = `تعديل وإعادة إرسال الفاتورة (${inv.wo})`;
+      document.getElementById('cpCancelEditBtn').classList.remove('hidden');
+      document.getElementById('cpWo').value = inv.wo;
+      document.getElementById('cpConsultant').value = inv.consultant;
+      document.getElementById('cpInvoiceDate').value = inv.invoiceDate || todayISO();
+      document.getElementById('cpWorkType').value = inv.workType;
+      document.getElementById('cpWorkDesc').value = inv.workDesc;
+      document.getElementById('cpEquipType').value = inv.equipType;
+      document.getElementById('cpFuncLoc').value = inv.funcLoc;
+      document.getElementById('cpOffice').value = inv.office;
+      document.getElementById('cpDeliveryDate').value = todayISO();
+      pendingPhotos = structuredClone(inv.photos || []);
+      renderPendingPhotosPreview();
+      document.querySelectorAll('.cp-chk').forEach(c => c.checked = (inv.checklist || []).includes(c.value));
+      updateChecklistProgress();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function renderContractorKPIs() {
+      const mine = appState.invoices.filter(x => x.contractor === currentSession.name);
+      const approved = mine.filter(x => x.status === 'معتمد').length;
+      const pending = mine.filter(x => x.status === 'قيد المراجعة').length;
+      const rejected = mine.filter(x => x.status === 'مرفوض' || x.status === 'ملاحظات معلقة').length;
+      const rate = mine.length ? Math.round((approved / mine.length) * 100) : 0;
+      document.getElementById('cpKpiTotal').textContent = mine.length;
+      document.getElementById('cpKpiApproved').textContent = approved;
+      document.getElementById('cpKpiPending').textContent = pending;
+      document.getElementById('cpKpiRejected').textContent = rejected;
+      document.getElementById('cpKpiRate').textContent = rate + '%';
+    }
+
+    function renderContractorTable() {
+      const q = (document.getElementById('cpTableSearch').value || '').trim().toLowerCase();
+      const st = document.getElementById('cpTableStatusFilter').value;
+      const mine = appState.invoices.filter(x => {
+        if (x.contractor !== currentSession.name) return false;
+        if (st && x.status !== st) return false;
+        if (q && !(x.wo.toLowerCase().includes(q) || (x.funcLoc || '').toLowerCase().includes(q) || (x.workDesc || '').toLowerCase().includes(q))) return false;
+        return true;
+      });
+
+      const tbody = document.getElementById('cpInvoicesTbody');
+      if (!mine.length) {
+        tbody.innerHTML = '<tr><td colspan="12" class="p-8 text-center text-slate-400 font-bold">لا توجد فواتير مطابقة</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = mine.map(inv => {
+        const photoCount = (inv.photos || []).length;
+        const canResubmit = inv.status === 'مرفوض' || inv.status === 'ملاحظات معلقة';
+        return `
+          <tr class="hover:bg-slate-50 transition">
+            <td class="p-3 font-mono font-extrabold text-navy-900">${escapeHtml(inv.wo)}</td>
+            <td class="p-3 font-semibold">${escapeHtml(inv.consultant)}</td>
+            <td class="p-3 font-mono">${escapeHtml(inv.invoiceDate || '—')}</td>
+            <td class="p-3"><span class="px-2 py-0.5 rounded-lg bg-slate-100 font-bold">${escapeHtml(inv.workType)}</span></td>
+            <td class="p-3 font-semibold">${escapeHtml(inv.workDesc)}</td>
+            <td class="p-3 font-mono font-bold">${escapeHtml(inv.equipType)}</td>
+            <td class="p-3 font-mono">${escapeHtml(inv.funcLoc || '—')}</td>
+            <td class="p-3 font-semibold">${escapeHtml(inv.office)}</td>
+            <td class="p-3 font-mono">${escapeHtml(inv.deliveryDate || '—')}</td>
+            <td class="p-3">${getStatusBadgeHtml(inv)}</td>
+            <td class="p-3">
+              ${photoCount ? `<button onclick="openInvoicePhotosLightbox('${inv.id}')" class="px-2.5 py-1 rounded-lg bg-sky-100 hover:bg-sky-200 text-sky-800 font-bold text-[11px]">${photoCount} صور</button>` : '<span class="text-slate-400">بدون</span>'}
+            </td>
+            <td class="p-3 text-center">
+              ${canResubmit ? `<button onclick="editContractorInvoice('${inv.id}')" class="px-2.5 py-1 rounded-lg bg-accent-500 hover:bg-accent-600 text-white font-bold text-[11px]">تعديل وإعادة إرسال</button>` : '<span class="text-slate-400">—</span>'}
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function openInvoicePhotosLightbox(invId) {
+      const inv = appState.invoices.find(x => x.id === invId);
+      if (!inv || !inv.photos || !inv.photos.length) return;
+      const p = inv.photos[0];
+      openLightbox(p.dataUrl, `${inv.wo} — ${p.stage} (${inv.photos.length} مرفقات)`);
+    }
+
+    function openLightbox(src, caption) {
+      document.getElementById('lightboxImg').src = src;
+      document.getElementById('lightboxCaption').textContent = caption || '';
+      openModal('lightboxModal');
+    }
+
+    // ==================== STAFF PORTAL NAVIGATION ====================
+    function enterStaffPortal() {
+      document.getElementById('staffPortal').classList.remove('hidden');
+      const roleMap = { admin: 'مدير النظام (صلاحيات كاملة)', reviewer: 'موظف شركة (مراجعة واعتماد)', viewer: 'مراقب (عرض وتقارير)' };
+      document.getElementById('sidebarUserName').textContent = currentSession.name;
+      document.getElementById('sidebarUserRole').textContent = roleMap[currentSession.role] || '';
+      document.getElementById('topbarWelcomeName').textContent = currentSession.name;
+      document.getElementById('topbarDateBadge').textContent = new Date().toLocaleDateString('ar-SA', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+
+      // Permission guards
+      const isViewer = currentSession.role === 'viewer';
+      document.getElementById('btnStaffAddInvoice').classList.toggle('hidden', isViewer);
+      document.getElementById('navBtnUsers').classList.toggle('hidden', currentSession.role !== 'admin');
+
+      populateStaticSelects();
+      switchStaffSection('dashboard');
+      lucide.createIcons();
+    }
+
+    function toggleMobileSidebar() {
+      document.getElementById('staffSidebar').classList.toggle('translate-x-full');
+      document.getElementById('mobileSidebarBackdrop').classList.toggle('hidden');
+    }
+
+    function switchStaffSection(sec) {
+      const sections = ['dashboard', 'invoices', 'reports', 'users', 'onedrive'];
+      const titles = {
+        dashboard: 'لوحة التحكم التنفيذية (Dashboard)',
+        invoices: 'سجل ومراجعة فواتير الصيانة والطوارئ',
+        reports: 'مركز التقارير والتصدير الكامل',
+        users: 'إدارة الصلاحيات والمستخدمين وسجل التدقيق',
+        onedrive: 'الربط السحابي مع Dropbox'
+      };
+      sections.forEach(s => {
+        const el = document.getElementById('sec_' + s);
+        if (el) el.classList.toggle('hidden', s !== sec);
+      });
+      document.querySelectorAll('.staff-nav-btn').forEach(btn => {
+        const active = btn.dataset.sec === sec;
+        btn.className = active
+          ? 'staff-nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition bg-accent-500 text-white shadow'
+          : 'staff-nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition text-slate-300 hover:bg-white/10 hover:text-white';
+      });
+      document.getElementById('staffHeaderTitle').textContent = titles[sec] || '';
+
+      // Close mobile sidebar if open
+      document.getElementById('staffSidebar').classList.add('translate-x-full');
+      document.getElementById('mobileSidebarBackdrop').classList.add('hidden');
+
+      if (sec === 'dashboard') renderDashboard();
+      if (sec === 'invoices') renderStaffInvoicesTable();
+      if (sec === 'reports') renderReportsModule();
+      if (sec === 'users') renderUsersManagement();
+      if (sec === 'onedrive') renderDropboxSettings();
+      lucide.createIcons();
+    }
+
+    // ==================== DASHBOARD LOGIC & CHARTS ====================
+    function getFilteredDashboardInvoices() {
+      const c = document.getElementById('dashFilterContractor').value;
+      const o = document.getElementById('dashFilterOffice').value;
+      const w = document.getElementById('dashFilterWorkType').value;
+      const con = document.getElementById('dashFilterConsultant').value;
+      const st = document.getElementById('dashFilterStatus').value;
+
+      return appState.invoices.filter(inv => {
+        if (c && inv.contractor !== c) return false;
+        if (o && inv.office !== o) return false;
+        if (w && inv.workType !== w) return false;
+        if (con && inv.consultant !== con) return false;
+        if (st && inv.status !== st) return false;
+        return true;
+      });
+    }
+
+    function resetDashboardFilters() {
+      ['dashFilterContractor', 'dashFilterOffice', 'dashFilterWorkType', 'dashFilterConsultant', 'dashFilterStatus'].forEach(id => {
+        document.getElementById(id).value = '';
+      });
+      closeDashDrilldown();
+      renderDashboard();
+    }
+
+    function destroyChart(key) {
+      if (charts[key]) { charts[key].destroy(); delete charts[key]; }
+    }
+
+    function renderDashboard() {
+      const data = getFilteredDashboardInvoices();
+      const total = data.length;
+      const approved = data.filter(x => x.status === 'معتمد').length;
+      const flagged = data.filter(x => x.status === 'مرفوض' || x.status === 'ملاحظات معلقة').length;
+      const emergency = data.filter(x => x.workType === 'طوارئ').length;
+      const maintenance = data.filter(x => x.workType === 'صيانة معدة' || x.workType === 'صيانة مغذي').length;
+      const c4c = data.filter(x => x.workType === 'C4C').length;
+
+      let slaNew = 0, slaLate = 0, slaEscalated = 0;
+      data.forEach(inv => {
+        const sla = getInvoiceSlaInfo(inv);
+        if (sla.label === 'جديد') slaNew++;
+        else if (sla.label === 'متأخر') slaLate++;
+        else if (sla.label === 'مصعّد') slaEscalated++;
+      });
+
+      const appPct = total ? Math.round((approved / total) * 100) : 0;
+      const emPct = total ? Math.round((emergency / total) * 100) : 0;
+
+      document.getElementById('kpiTotal').textContent = total;
+      document.getElementById('kpiApproved').textContent = approved;
+      document.getElementById('kpiApprovedPct').textContent = `نسبة الاعتماد: ${appPct}%`;
+      document.getElementById('kpiApprovedBar').style.width = `${appPct}%`;
+      document.getElementById('kpiFlagged').textContent = flagged;
+      document.getElementById('kpiEmergency').textContent = emergency;
+      document.getElementById('kpiEmergencyPct').textContent = `${emPct}% من الإجمالي`;
+      document.getElementById('kpiMaintenance').textContent = maintenance;
+      document.getElementById('kpiC4c').textContent = c4c;
+
+      document.getElementById('kpiSlaNew').textContent = slaNew;
+      document.getElementById('kpiSlaLate').textContent = slaLate;
+      document.getElementById('kpiSlaEscalated').textContent = slaEscalated;
+
+      // Active filter hint
+      const parts = [];
+      const fc = document.getElementById('dashFilterContractor').value;
+      const fo = document.getElementById('dashFilterOffice').value;
+      const fw = document.getElementById('dashFilterWorkType').value;
+      const fcon = document.getElementById('dashFilterConsultant').value;
+      const fst = document.getElementById('dashFilterStatus').value;
+      if (fc) parts.push(`المقاول: ${fc}`);
+      if (fo) parts.push(`المكتب: ${fo}`);
+      if (fw) parts.push(`نوع العمل: ${fw}`);
+      if (fcon) parts.push(`الاستشاري: ${fcon}`);
+      if (fst) parts.push(`الحالة: ${fst}`);
+      document.getElementById('dashActiveFilterHint').textContent = parts.length
+        ? `نطاق العرض والتصدير الحالي (${total} فاتورة): ${parts.join(' | ')}`
+        : `نطاق العرض والتصدير الحالي: جميع الفواتير (${total} فاتورة)`;
+
+      if (activeDrilldownKey) renderDashDrilldown();
+      renderDashboardCharts(data);
+    }
+
+    function openDashDrilldown(key) {
+      activeDrilldownKey = key;
+      document.getElementById('dashDrilldownPanel').classList.remove('hidden');
+      renderDashDrilldown();
+      document.getElementById('dashDrilldownPanel').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+
+    function closeDashDrilldown() {
+      activeDrilldownKey = null;
+      document.getElementById('dashDrilldownPanel').classList.add('hidden');
+    }
+
+    function renderDashDrilldown() {
+      if (!activeDrilldownKey) return;
+      const base = getFilteredDashboardInvoices();
+      const map = {
+        all: { title: 'إجمالي الفواتير', fn: () => true },
+        approved: { title: 'الفواتير المعتمدة', fn: x => x.status === 'معتمد' },
+        flagged: { title: 'الفواتير التي عليها ملاحظة / مرفوضة', fn: x => x.status === 'مرفوض' || x.status === 'ملاحظات معلقة' },
+        emergency: { title: 'فواتير الطوارئ', fn: x => x.workType === 'طوارئ' },
+        maintenance: { title: 'فواتير أعمال الصيانة (معدة + مغذي)', fn: x => x.workType === 'صيانة معدة' || x.workType === 'صيانة مغذي' },
+        c4c: { title: 'فواتير أعمال C4C', fn: x => x.workType === 'C4C' },
+        sla_new: { title: 'فواتير جديدة (1-3 أيام عمل)', fn: x => getInvoiceSlaInfo(x).label === 'جديد' },
+        sla_late: { title: 'فواتير متأخرة (4-5 أيام عمل)', fn: x => getInvoiceSlaInfo(x).label === 'متأخر' },
+        sla_escalated: { title: 'فواتير مصعّدة (+5 أيام عمل)', fn: x => getInvoiceSlaInfo(x).label === 'مصعّد' }
+      };
+      const cfg = map[activeDrilldownKey] || map.all;
+      const q = (document.getElementById('dashDrilldownSearch').value || '').trim().toLowerCase();
+      const rows = base.filter(x => cfg.fn(x) && (!q || x.wo.toLowerCase().includes(q) || x.contractor.toLowerCase().includes(q) || (x.workDesc || '').toLowerCase().includes(q)));
+
+      document.getElementById('dashDrilldownTitle').textContent = cfg.title;
+      document.getElementById('dashDrilldownCount').textContent = rows.length;
+      const tbody = document.getElementById('dashDrilldownTbody');
+      if (!rows.length) {
+        tbody.innerHTML = '<tr><td colspan="8" class="p-6 text-center text-slate-400 font-bold">لا توجد فواتير في هذا التصنيف</td></tr>';
+        return;
+      }
+      tbody.innerHTML = rows.slice(0, 120).map(inv => `
+        <tr class="hover:bg-slate-50">
+          <td class="p-2.5 font-mono font-bold text-navy-900">${escapeHtml(inv.wo)}</td>
+          <td class="p-2.5 font-bold">${escapeHtml(inv.contractor)}</td>
+          <td class="p-2.5">${escapeHtml(inv.workType)}</td>
+          <td class="p-2.5">${escapeHtml(inv.workDesc)}</td>
+          <td class="p-2.5">${escapeHtml(inv.office)}</td>
+          <td class="p-2.5 font-mono">${escapeHtml(inv.deliveryDate || '—')}</td>
+          <td class="p-2.5">${getStatusBadgeHtml(inv)}</td>
+          <td class="p-2.5 text-center">
+            <button onclick="openReviewModal('${inv.id}')" class="px-2.5 py-1 rounded-lg bg-navy-900 hover:bg-navy-800 text-white text-[11px] font-bold">مراجعة</button>
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    function renderDashboardCharts(data) {
+      const darkTooltip = {
+        backgroundColor: '#0B2545',
+        titleColor: '#ffffff',
+        bodyColor: '#f1f5f9',
+        titleFont: { family: 'Cairo', size: 12, weight: 'bold' },
+        bodyFont: { family: 'Cairo', size: 12 },
+        padding: 10,
+        cornerRadius: 10,
+        rtl: true
+      };
+
+      const pillBadge = (color = '#0B2545', bg = '#f1f5f9', border = '#cbd5e1') => ({
+        anchor: 'end',
+        align: 'end',
+        offset: 6,
+        color,
+        backgroundColor: bg,
+        borderColor: border,
+        borderWidth: 1,
+        borderRadius: 99,
+        padding: { top: 2, bottom: 2, left: 7, right: 7 },
+        font: { family: 'Cairo', size: 11, weight: '800' },
+        textAlign: 'center'
+      });
+
+      // 1. Work Types Doughnut + 2x2 Breakdown Cards
+      const wtDefs = [
+        { key: 'طوارئ', color: '#F26522' },
+        { key: 'صيانة معدة', color: '#0B2545' },
+        { key: 'C4C', color: '#0ea5e9' },
+        { key: 'صيانة مغذي', color: '#f59e0b' }
+      ];
+      const wtCounts = wtDefs.map(d => data.filter(x => x.workType === d.key).length);
+      document.getElementById('workTypesCenterTotal').textContent = data.length;
+      document.getElementById('workTypesLegendGrid').innerHTML = wtDefs.map((d, idx) => {
+        const cnt = wtCounts[idx];
+        const pct = data.length ? Math.round((cnt / data.length) * 100) : 0;
+        return `
+          <div class="flex items-center justify-between p-3.5 rounded-2xl border border-slate-200 bg-slate-50/70">
+            <div class="flex items-center gap-2.5">
+              <span class="w-3.5 h-3.5 rounded-full shrink-0" style="background:${d.color}"></span>
+              <span class="text-xs font-extrabold text-navy-900">${d.key}</span>
+            </div>
+            <div class="flex items-center gap-2">
+              <span class="text-sm font-black text-navy-900">${cnt}</span>
+              <span class="text-[11px] font-bold text-slate-500">(${pct}%)</span>
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      destroyChart('workTypes');
+      charts.workTypes = new Chart(document.getElementById('chartWorkTypes'), {
+        type: 'doughnut',
+        data: {
+          labels: wtDefs.map(d => d.key),
+          datasets: [{ data: wtCounts, backgroundColor: wtDefs.map(d => d.color), borderWidth: 3, borderColor: '#ffffff' }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          cutout: '66%',
+          plugins: {
+            legend: { display: false },
+            datalabels: { display: false },
+            tooltip: darkTooltip
+          }
+        }
+      });
+
+      // 2. Contractors Stacked Bar (Sorted ASCENDING dynamically, Legend at BOTTOM, Total Pill Badge at end)
+      const cMap = {};
+      data.forEach(inv => {
+        if (!cMap[inv.contractor]) cMap[inv.contractor] = { approved: 0, pending: 0, flagged: 0, total: 0 };
+        cMap[inv.contractor].total++;
+        if (inv.status === 'معتمد') cMap[inv.contractor].approved++;
+        else if (inv.status === 'قيد المراجعة') cMap[inv.contractor].pending++;
+        else cMap[inv.contractor].flagged++;
+      });
+      const cEntries = Object.entries(cMap).sort((a, b) => a[1].total - b[1].total);
+      const maxCTotal = Math.max(10, ...cEntries.map(e => e[1].total));
+
+      destroyChart('contractors');
+      charts.contractors = new Chart(document.getElementById('chartContractors'), {
+        type: 'bar',
+        data: {
+          labels: cEntries.map(e => e[0]),
+          datasets: [
+            { label: 'معتمد', data: cEntries.map(e => e[1].approved), backgroundColor: '#10b981', borderRadius: 4, datalabels: { display: (ctx) => ctx.dataset.data[ctx.dataIndex] >= 12, color: '#fff', font: { family: 'Cairo', size: 10, weight: 'bold' } } },
+            { label: 'قيد المراجعة', data: cEntries.map(e => e[1].pending), backgroundColor: '#0ea5e9', borderRadius: 4, datalabels: { display: (ctx) => ctx.dataset.data[ctx.dataIndex] >= 12, color: '#fff', font: { family: 'Cairo', size: 10, weight: 'bold' } } },
+            {
+              label: 'مرفوض/ملاحظات',
+              data: cEntries.map(e => e[1].flagged),
+              backgroundColor: '#f43f5e',
+              borderRadius: 4,
+              datalabels: {
+                display: true,
+                ...pillBadge('#0B2545', '#f1f5f9', '#cbd5e1'),
+                formatter: (_v, ctx) => cEntries[ctx.dataIndex][1].total
+              }
+            }
+          ]
+        },
+        options: {
+          indexAxis: 'y',
+          responsive: true,
+          maintainAspectRatio: false,
+          layout: { padding: { left: 38, right: 10 } },
+          scales: {
+            x: { stacked: true, suggestedMax: Math.ceil(maxCTotal * 1.15), grid: { color: '#f1f5f9' }, ticks: { font: { family: 'Cairo', size: 11 }, maxRotation: 0 } },
+            y: { stacked: true, grid: { display: false }, ticks: { font: { family: 'Cairo', size: 11, weight: 'bold' }, color: '#0B2545' } }
+          },
+          plugins: {
+            legend: { position: 'bottom', labels: { font: { family: 'Cairo', size: 12, weight: 'bold' }, usePointStyle: true, padding: 16 } },
+            tooltip: darkTooltip
+          }
+        }
+      });
+
+      // 3. Offices Bar Chart
+      const oMap = {};
+      data.forEach(inv => { const o = inv.office || 'غير محدد'; oMap[o] = (oMap[o] || 0) + 1; });
+      const oEntries = Object.entries(oMap).sort((a, b) => b[1] - a[1]);
+      const maxO = Math.max(10, ...oEntries.map(e => e[1]));
+
+      destroyChart('offices');
+      charts.offices = new Chart(document.getElementById('chartOffices'), {
+        type: 'bar',
+        data: {
+          labels: oEntries.map(e => e[0]),
+          datasets: [{ label: 'عدد الفواتير', data: oEntries.map(e => e[1]), backgroundColor: '#0B2545', borderRadius: 8, maxBarThickness: 38 }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          layout: { padding: { top: 26 } },
+          scales: {
+            y: { suggestedMax: Math.ceil(maxO * 1.18), grid: { color: '#f1f5f9' }, ticks: { font: { family: 'Cairo', size: 11 } } },
+            x: { grid: { display: false }, ticks: { font: { family: 'Cairo', size: 11, weight: 'bold' }, color: '#0B2545' } }
+          },
+          plugins: {
+            legend: { display: false },
+            tooltip: darkTooltip,
+            datalabels: { ...pillBadge('#0B2545', '#f1f5f9', '#cbd5e1'), anchor: 'end', align: 'top', offset: 4 }
+          }
+        }
+      });
+
+      // 4. Work Descriptions Horizontal Bar
+      const dMap = {};
+      data.forEach(inv => { const d = inv.workDesc || 'غير محدد'; dMap[d] = (dMap[d] || 0) + 1; });
+      const dEntries = Object.entries(dMap).sort((a, b) => b[1] - a[1]).slice(0, 8);
+      const maxD = Math.max(10, ...dEntries.map(e => e[1]));
+
+      destroyChart('workDescs');
+      charts.workDescs = new Chart(document.getElementById('chartWorkDescs'), {
+        type: 'bar',
+        data: {
+          labels: dEntries.map(e => e[0]),
+          datasets: [{ label: 'التكرار', data: dEntries.map(e => e[1]), backgroundColor: '#F26522', borderRadius: 6, maxBarThickness: 22 }]
+        },
+        options: {
+          indexAxis: 'y',
+          responsive: true,
+          maintainAspectRatio: false,
+          layout: { padding: { left: 36 } },
+          scales: {
+            x: { suggestedMax: Math.ceil(maxD * 1.18), grid: { color: '#f1f5f9' }, ticks: { font: { family: 'Cairo', size: 11 }, maxRotation: 0 } },
+            y: { grid: { display: false }, ticks: { font: { family: 'Cairo', size: 11, weight: 'bold' }, color: '#0B2545' } }
+          },
+          plugins: {
+            legend: { display: false },
+            tooltip: darkTooltip,
+            datalabels: pillBadge('#c2410c', '#fff7ed', '#fed7aa')
+          }
+        }
+      });
+
+      // 5. Top Delay Reasons Chart
+      const flaggedRows = data.filter(x => x.status === 'مرفوض' || x.status === 'ملاحظات معلقة');
+      const noteMap = {};
+      flaggedRows.forEach(inv => {
+        const n = (inv.note && inv.note !== 'قيد المراجعة' && inv.note !== 'تم') ? inv.note : 'غير معتمد';
+        noteMap[n] = (noteMap[n] || 0) + 1;
+      });
+      const topNotes = Object.entries(noteMap).sort((a, b) => b[1] - a[1]).slice(0, 5);
+      const maxN = Math.max(5, ...topNotes.map(e => e[1]));
+
+      destroyChart('topDelayNotes');
+      charts.topDelayNotes = new Chart(document.getElementById('chartTopDelayNotes'), {
+        type: 'bar',
+        data: {
+          labels: topNotes.length ? topNotes.map(e => e[0]) : ['لا توجد ملاحظات'],
+          datasets: [{
+            label: 'عدد الفواتير',
+            data: topNotes.length ? topNotes.map(e => e[1]) : [0],
+            backgroundColor: ['#e11d48', '#f43f5e', '#fb7185', '#f97316', '#f59e0b'],
+            borderRadius: 7,
+            maxBarThickness: 26
+          }]
+        },
+        options: {
+          indexAxis: 'y',
+          responsive: true,
+          maintainAspectRatio: false,
+          layout: { padding: { left: 38 } },
+          scales: {
+            x: { suggestedMax: Math.ceil(maxN * 1.2), grid: { color: '#f1f5f9' }, ticks: { font: { family: 'Cairo', size: 11 }, maxRotation: 0, precision: 0 } },
+            y: { grid: { display: false }, ticks: { font: { family: 'Cairo', size: 11, weight: 'bold' }, color: '#0B2545' } }
+          },
+          plugins: {
+            legend: { display: false },
+            tooltip: darkTooltip,
+            datalabels: pillBadge('#be123c', '#fff1f2', '#fecdd3')
+          }
+        }
+      });
+
+      // 6. Delay Reasons by Contractor (Top 5 Contractors with Most Notes)
+      const cDelayMap = {};
+      flaggedRows.forEach(inv => {
+        if (!cDelayMap[inv.contractor]) cDelayMap[inv.contractor] = { total: 0, notes: {} };
+        const n = (inv.note && inv.note !== 'قيد المراجعة' && inv.note !== 'تم') ? inv.note : 'غير معتمد';
+        cDelayMap[inv.contractor].total++;
+        cDelayMap[inv.contractor].notes[n] = (cDelayMap[inv.contractor].notes[n] || 0) + 1;
+      });
+      const top5DelayContractors = Object.entries(cDelayMap).sort((a, b) => b[1].total - a[1].total).slice(0, 5);
+      const maxDC = Math.max(5, ...top5DelayContractors.map(e => e[1].total));
+
+      destroyChart('delayByContractor');
+      charts.delayByContractor = new Chart(document.getElementById('chartDelayByContractor'), {
+        type: 'bar',
+        data: {
+          labels: top5DelayContractors.length ? top5DelayContractors.map(([cName, info]) => {
+            const topNote = Object.entries(info.notes).sort((a, b) => b[1] - a[1])[0];
+            const shortNote = topNote ? (topNote[0].length > 22 ? topNote[0].slice(0, 22) + '...' : topNote[0]) : '';
+            return [cName, topNote ? `الأبرز: ${shortNote} (${topNote[1]})` : ''];
+          }) : ['لا توجد ملاحظات'],
+          datasets: [{
+            label: 'عدد الفواتير المتوقفة',
+            data: top5DelayContractors.length ? top5DelayContractors.map(e => e[1].total) : [0],
+            backgroundColor: ['#0B2545', '#1d4ed8', '#e11d48', '#f97316', '#f59e0b'],
+            borderRadius: 7,
+            maxBarThickness: 26
+          }]
+        },
+        options: {
+          indexAxis: 'y',
+          responsive: true,
+          maintainAspectRatio: false,
+          layout: { padding: { left: 38 } },
+          scales: {
+            x: { suggestedMax: Math.ceil(maxDC * 1.2), grid: { color: '#f1f5f9' }, ticks: { font: { family: 'Cairo', size: 11 }, maxRotation: 0, precision: 0 } },
+            y: { grid: { display: false }, ticks: { font: { family: 'Cairo', size: 10, weight: 'bold' }, color: '#0B2545' } }
+          },
+          plugins: {
+            legend: { display: false },
+            datalabels: pillBadge('#0B2545', '#f1f5f9', '#cbd5e1'),
+            tooltip: {
+              ...darkTooltip,
+              callbacks: {
+                afterBody: (items) => {
+                  const idx = items[0]?.dataIndex;
+                  if (idx == null || !top5DelayContractors[idx]) return [];
+                  const notesObj = top5DelayContractors[idx][1].notes;
+                  return Object.entries(notesObj).sort((a, b) => b[1] - a[1]).map(([k, v]) => `• ${k}: ${v}`);
+                }
+              }
+            }
+          }
+        }
+      });
+    }
+
+    // ==================== STAFF INVOICES TABLE & REVIEW ====================
+    function getFilteredStaffInvoices() {
+      const q = (document.getElementById('invSearch').value || '').trim().toLowerCase();
+      const fc = document.getElementById('invFilterContractor').value;
+      const fo = document.getElementById('invFilterOffice').value;
+      const fw = document.getElementById('invFilterWorkType').value;
+      const fst = document.getElementById('invFilterStatus').value;
+      const fsla = document.getElementById('invFilterSla').value;
+      const fmon = document.getElementById('invFilterMonth').value;
+
+      return appState.invoices.filter(inv => {
+        if (fc && inv.contractor !== fc) return false;
+        if (fo && inv.office !== fo) return false;
+        if (fw && inv.workType !== fw) return false;
+        if (fst && inv.status !== fst) return false;
+        if (fsla && getInvoiceSlaInfo(inv).label !== fsla) return false;
+        if (fmon) {
+          const m1 = (inv.invoiceDate || '').slice(0, 7);
+          const m2 = (inv.deliveryDate || '').slice(0, 7);
+          if (m1 !== fmon && m2 !== fmon) return false;
+        }
+        if (q) {
+          const hay = `${inv.wo} ${inv.contractor} ${inv.funcLoc} ${inv.workDesc} ${inv.office} ${inv.note}`.toLowerCase();
+          if (!hay.includes(q)) return false;
+        }
+        return true;
+      });
+    }
+
+    function resetStaffInvoicesFilters() {
+      ['invSearch', 'invFilterContractor', 'invFilterOffice', 'invFilterWorkType', 'invFilterStatus', 'invFilterSla', 'invFilterMonth'].forEach(id => {
+        document.getElementById(id).value = '';
+      });
+      renderStaffInvoicesTable();
+    }
+
+    function renderStaffInvoicesTable() {
+      const rows = getFilteredStaffInvoices();
+      document.getElementById('invTableCountLabel').textContent = `جميع بيانات الجدول وعددها (${rows.length})`;
+
+      const tbody = document.getElementById('staffInvoicesTbody');
+      if (!rows.length) {
+        tbody.innerHTML = '<tr><td colspan="16" class="p-8 text-center text-slate-400 font-bold">لا توجد فواتير مطابقة لمعايير التصفية</td></tr>';
+        updateBulkBtnUI();
+        return;
+      }
+
+      tbody.innerHTML = rows.map(inv => {
+        const sla = getInvoiceSlaInfo(inv);
+        const photoCount = (inv.photos || []).length;
+        const checked = selectedInvoiceIds.has(inv.id) ? 'checked' : '';
+        return `
+          <tr class="hover:bg-slate-50/90 transition">
+            <td class="p-3 text-center">
+              <input type="checkbox" ${checked} onchange="toggleSelectInvoice('${inv.id}', this.checked)" class="w-4 h-4 accent-accent-500" />
+            </td>
+            <td class="p-3 font-mono font-extrabold text-navy-900">${escapeHtml(inv.wo)}</td>
+            <td class="p-3 font-bold text-slate-800">${escapeHtml(inv.contractor)}</td>
+            <td class="p-3">${escapeHtml(inv.consultant)}</td>
+            <td class="p-3 font-mono">${escapeHtml(inv.invoiceDate || '—')}</td>
+            <td class="p-3"><span class="px-2 py-0.5 rounded-lg bg-slate-100 font-bold">${escapeHtml(inv.workType)}</span></td>
+            <td class="p-3 font-semibold">${escapeHtml(inv.workDesc)}</td>
+            <td class="p-3 font-mono font-bold">${escapeHtml(inv.equipType)}</td>
+            <td class="p-3 font-mono">${escapeHtml(inv.funcLoc || '—')}</td>
+            <td class="p-3 font-semibold">${escapeHtml(inv.office)}</td>
+            <td class="p-3 font-mono">${escapeHtml(inv.deliveryDate || '—')}</td>
+            <td class="p-3 text-center font-extrabold text-navy-900">${sla.days !== null ? `${sla.days} يوم` : '—'}</td>
+            <td class="p-3 text-center"><span class="px-2.5 py-0.5 rounded-full font-extrabold text-[11px] ${sla.cls}">${sla.label}</span></td>
+            <td class="p-3">${getStatusBadgeHtml(inv)}</td>
+            <td class="p-3 text-center">
+              ${photoCount ? `<button onclick="openInvoicePhotosLightbox('${inv.id}')" class="px-2 py-1 rounded-lg bg-sky-100 hover:bg-sky-200 text-sky-800 font-bold text-[11px]">${photoCount} صور</button>` : '<span class="text-slate-400">0</span>'}
+            </td>
+            <td class="p-3 text-center">
+              <button onclick="openReviewModal('${inv.id}')" class="px-3 py-1.5 rounded-lg bg-navy-900 hover:bg-navy-800 text-white font-bold text-[11px] transition">مراجعة</button>
+            </td>
+          </tr>
+        `;
+      }).join('');
+      updateBulkBtnUI();
+    }
+
+    function toggleSelectInvoice(id, isChecked) {
+      if (isChecked) selectedInvoiceIds.add(id); else selectedInvoiceIds.delete(id);
+      updateBulkBtnUI();
+    }
+
+    function toggleSelectAllInvoices(cb) {
+      const visible = getFilteredStaffInvoices();
+      if (cb.checked) visible.forEach(x => selectedInvoiceIds.add(x.id));
+      else visible.forEach(x => selectedInvoiceIds.delete(x.id));
+      renderStaffInvoicesTable();
+    }
+
+    function updateBulkBtnUI() {
+      const btn = document.getElementById('btnBulkApprove');
+      const cnt = selectedInvoiceIds.size;
+      document.getElementById('selectedRowsCount').textContent = cnt;
+      btn.classList.toggle('hidden', cnt === 0 || currentSession?.role === 'viewer');
+    }
+
+    function bulkApproveSelected() {
+      if (currentSession?.role === 'viewer') return;
+      let count = 0;
+      appState.invoices.forEach(inv => {
+        if (selectedInvoiceIds.has(inv.id)) {
+          inv.status = 'معتمد';
+          inv.note = 'تم';
+          count++;
+        }
+      });
+      selectedInvoiceIds.clear();
+      document.getElementById('selectAllInvoices').checked = false;
+      saveState();
+      logAudit('اعتماد جماعي', `تم اعتماد ${count} فاتورة`);
+      showToast(`تم اعتماد ${count} فاتورة بنجاح`, 'success');
+      renderStaffInvoicesTable();
+    }
+
+    function openReviewModal(invId) {
+      const inv = appState.invoices.find(x => x.id === invId);
+      if (!inv) return;
+      const sla = getInvoiceSlaInfo(inv);
+      document.getElementById('rmInvoiceId').value = inv.id;
+      document.getElementById('rmTitle').textContent = `مراجعة الفاتورة — أمر عمل #${inv.wo}`;
+      document.getElementById('rmSubTitle').textContent = `${inv.contractor} | ${inv.office} | ${inv.workType}`;
+
+      const fields = [
+        ['رقم أمر العمل', inv.wo],
+        ['المقاول', inv.contractor],
+        ['الاستشاري', inv.consultant],
+        ['تاريخ الفاتورة', inv.invoiceDate || '—'],
+        ['نوع العمل', inv.workType],
+        ['وصف العمل', inv.workDesc],
+        ['نوع المعدة', inv.equipType],
+        ['الموقع الوظيفي', inv.funcLoc || '—'],
+        ['المكتب', inv.office],
+        ['تاريخ التسليم للأصول', inv.deliveryDate || '—'],
+        ['المدة (أيام عمل)', sla.days !== null ? `${sla.days} يوم` : 'تمت المراجعة'],
+        ['التصنيف', sla.label]
+      ];
+      document.getElementById('rmDetailsGrid').innerHTML = fields.map(([k, v]) => `
+        <div class="bg-slate-50 rounded-xl p-2.5 border border-slate-200">
+          <p class="text-[10px] font-bold text-slate-400">${k}</p>
+          <p class="font-extrabold text-navy-900 mt-0.5">${escapeHtml(v)}</p>
+        </div>
+      `).join('');
+
+      // Photos
+      const photosGrid = document.getElementById('rmPhotosGrid');
+      if (inv.photos && inv.photos.length) {
+        photosGrid.innerHTML = inv.photos.map(p => `
+          <div class="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
+            <img src="${p.dataUrl}" onclick="openLightbox('${p.dataUrl}', '${escapeHtml(p.oneDrivePath || p.name)}')" class="w-full h-24 object-cover cursor-pointer" />
+            <div class="p-2 space-y-0.5">
+              <p class="text-[11px] font-extrabold text-navy-900 truncate">${escapeHtml(p.stage)}</p>
+              <p class="text-[10px] font-mono text-sky-700 truncate" dir="ltr" title="${escapeHtml(p.oneDrivePath || '')}">${escapeHtml(p.oneDrivePath || '')}</p>
+            </div>
+          </div>
+        `).join('');
+      } else {
+        photosGrid.innerHTML = '<p class="col-span-full text-xs text-slate-400 bg-slate-50 p-3 rounded-xl text-center">لا توجد صور مرفقة لهذه الفاتورة</p>';
+      }
+
+      document.getElementById('rmStatus').value = inv.status;
+      document.getElementById('rmQuality').value = inv.quality || 'ممتاز';
+      document.getElementById('rmNote').value = (inv.note && inv.note !== 'قيد المراجعة' && inv.note !== 'تم') ? inv.note : '';
+
+      document.getElementById('rmQuickNotesChips').innerHTML = QUICK_REVIEW_NOTES.map(n => `
+        <button type="button" onclick="document.getElementById('rmNote').value='${escapeHtml(n)}'; document.getElementById('rmStatus').value='مرفوض';"
+          class="px-2.5 py-1 rounded-full bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-[11px] font-bold transition">${escapeHtml(n)}</button>
+      `).join('');
+
+      const isViewer = currentSession?.role === 'viewer';
+      document.getElementById('rmDecisionBox').classList.toggle('hidden', isViewer);
+      document.getElementById('rmSaveBtn').classList.toggle('hidden', isViewer);
+      document.getElementById('rmDeleteBtn').classList.toggle('hidden', currentSession?.role !== 'admin');
+
+      openModal('reviewModal');
+    }
+
+    function saveReviewDecision() {
+      const id = document.getElementById('rmInvoiceId').value;
+      const inv = appState.invoices.find(x => x.id === id);
+      if (!inv) return;
+      const st = document.getElementById('rmStatus').value;
+      const note = document.getElementById('rmNote').value.trim();
+      inv.status = st;
+      inv.quality = document.getElementById('rmQuality').value;
+      inv.note = st === 'معتمد' ? 'تم' : (note || (st === 'مرفوض' ? 'غير معتمد' : 'قيد المراجعة'));
+      saveState();
+      logAudit('مراجعة فاتورة', `أمر عمل ${inv.wo} ← ${st}`);
+      closeModal('reviewModal');
+      showToast('تم حفظ قرار المراجعة بنجاح', 'success');
+      if (!document.getElementById('sec_dashboard').classList.contains('hidden')) renderDashboard();
+      if (!document.getElementById('sec_invoices').classList.contains('hidden')) renderStaffInvoicesTable();
+    }
+
+    function deleteCurrentReviewInvoice() {
+      const id = document.getElementById('rmInvoiceId').value;
+      const idx = appState.invoices.findIndex(x => x.id === id);
+      if (idx < 0) return;
+      const wo = appState.invoices[idx].wo;
+      appState.invoices.splice(idx, 1);
+      saveState();
+      logAudit('حذف فاتورة', `أمر عمل ${wo}`);
+      closeModal('reviewModal');
+      showToast('تم حذف الفاتورة من السجل', 'info');
+      renderStaffInvoicesTable();
+      renderDashboard();
+    }
+
+    function openStaffAddInvoiceModal() {
+      document.getElementById('saInvoiceDate').value = todayISO();
+      document.getElementById('saDeliveryDate').value = todayISO();
+      document.getElementById('saWo').value = '';
+      document.getElementById('saWorkDesc').value = '';
+      document.getElementById('saFuncLoc').value = '';
+      openModal('staffAddModal');
+    }
+
+    function handleStaffAddInvoice(e) {
+      e.preventDefault();
+      const wo = document.getElementById('saWo').value.trim();
+      appState.invoices.unshift({
+        id: 'INV-' + Date.now(),
+        wo,
+        contractor: document.getElementById('saContractor').value,
+        consultant: document.getElementById('saConsultant').value,
+        invoiceDate: document.getElementById('saInvoiceDate').value,
+        workType: document.getElementById('saWorkType').value,
+        workDesc: document.getElementById('saWorkDesc').value.trim(),
+        equipType: document.getElementById('saEquipType').value,
+        funcLoc: document.getElementById('saFuncLoc').value.trim(),
+        office: document.getElementById('saOffice').value,
+        deliveryDate: document.getElementById('saDeliveryDate').value,
+        status: 'قيد المراجعة',
+        note: 'قيد المراجعة',
+        quality: 'جيد جداً',
+        photos: []
+      });
+      saveState();
+      populateMonthFilter();
+      logAudit('إضافة فاتورة يدوياً', `أمر عمل ${wo}`);
+      closeModal('staffAddModal');
+      showToast('تمت إضافة الفاتورة بنجاح', 'success');
+      renderStaffInvoicesTable();
+    }
+
+    // ==================== EXCEL & PDF EXPORTS ====================
+    function triggerBlobDownload(blob, filename) {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 500);
+    }
+
+    function mapInvoicesForExcel(rows) {
+      return rows.map((inv, idx) => {
+        const sla = getInvoiceSlaInfo(inv);
+        return {
+          'م': idx + 1,
+          'رقم أمر العمل': inv.wo,
+          'المقاول': inv.contractor,
+          'الاستشاري': inv.consultant,
+          'تاريخ الفاتورة': inv.invoiceDate || '',
+          'نوع العمل': inv.workType,
+          'وصف العمل': inv.workDesc,
+          'نوع المعدة': inv.equipType,
+          'الموقع الوظيفي': inv.funcLoc || '',
+          'المكتب': inv.office,
+          'تاريخ التسليم للأصول': inv.deliveryDate || '',
+          'المدة (أيام عمل)': sla.days !== null ? sla.days : 'تمت المراجعة',
+          'التصنيف': sla.label,
+          'الحالة': inv.status,
+          'الملاحظة / سبب الرفض': inv.note || '',
+          'مسار صور Dropbox': (inv.photos || []).map(p => p.oneDrivePath).join(' | ')
+        };
+      });
+    }
+
+    function exportVisibleStaffInvoicesExcel() {
+      const rows = getFilteredStaffInvoices();
+      if (!rows.length) { showToast('لا توجد بيانات ظاهرة في الجدول للتصدير', 'warning'); return; }
+      try {
+        if (typeof XLSX !== 'undefined') {
+          const wb = XLSX.utils.book_new();
+          const ws = XLSX.utils.json_to_sheet(mapInvoicesForExcel(rows));
+          XLSX.utils.book_append_sheet(wb, ws, 'الفواتير_المفلترة');
+          const out = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+          triggerBlobDownload(new Blob([out], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }), `فواتير_الجدول_${todayISO()}.xlsx`);
+          showToast(`تم تصدير ${rows.length} فاتورة ظاهرة إلى ملف Excel بنجاح`, 'success');
+          return;
+        }
+      } catch (err) {
+        console.warn('XLSX fallback to CSV:', err);
+      }
+      // CSV UTF-8 BOM fallback
+      const mapped = mapInvoicesForExcel(rows);
+      const headers = Object.keys(mapped[0]);
+      const csv = '\uFEFF' + [headers.join(','), ...mapped.map(r => headers.map(h => `"${String(r[h]).replace(/"/g, '""')}"`).join(','))].join('\n');
+      triggerBlobDownload(new Blob([csv], { type: 'text/csv;charset=utf-8;' }), `فواتير_الجدول_${todayISO()}.csv`);
+      showToast(`تم تصدير ${rows.length} فاتورة بنجاح`, 'success');
+    }
+
+    function exportFullExcel() {
+      try {
+        if (typeof XLSX !== 'undefined') {
+          const wb = XLSX.utils.book_new();
+          // Sheet 1: All Invoices
+          XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(mapInvoicesForExcel(appState.invoices)), 'الفواتير_التفصيلية');
+
+          // Sheet 2: Contractors Summary
+          const summary = buildContractorScorecardData().map(r => ({
+            'المقاول': r.contractor,
+            'الإجمالي': r.total,
+            'طوارئ': r.emergency,
+            'صيانة معدة': r.maintEquip,
+            'صيانة مغذي': r.maintFeeder,
+            'C4C': r.c4c,
+            'معتمد': r.approved,
+            'مرفوض/ملاحظات': r.flagged,
+            'نسبة الاعتماد %': r.rate + '%'
+          }));
+          XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(summary), 'ملخص_المقاولين');
+
+          // Sheet 3: Delay Reasons
+          const noteCounts = {};
+          appState.invoices.filter(x => x.status === 'مرفوض' || x.status === 'ملاحظات معلقة').forEach(x => {
+            const n = x.note || 'غير معتمد';
+            noteCounts[n] = (noteCounts[n] || 0) + 1;
+          });
+          const delaySheet = Object.entries(noteCounts).sort((a, b) => b[1] - a[1]).map(([k, v]) => ({ 'سبب التأخير / الملاحظة': k, 'عدد الفواتير': v }));
+          XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(delaySheet.length ? delaySheet : [{ 'سبب التأخير / الملاحظة': 'لا توجد ملاحظات', 'عدد الفواتير': 0 }]), 'ملاحظات_التأخير');
+
+          const out = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+          triggerBlobDownload(new Blob([out], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }), `تقرير_فواتير_شامل_${todayISO()}.xlsx`);
+          showToast('تم تصدير ملف Excel الشامل (3 أوراق) بنجاح', 'success');
+          return;
+        }
+      } catch (err) {
+        console.error(err);
+      }
+      exportVisibleStaffInvoicesExcel();
+    }
+
+    function exportDashboardPdf() {
+      const data = getFilteredDashboardInvoices();
+      const fc = document.getElementById('dashFilterContractor').value || 'كل المقاولين';
+      const fo = document.getElementById('dashFilterOffice').value || 'كل المكاتب';
+      const fw = document.getElementById('dashFilterWorkType').value || 'كل أنواع الأعمال';
+      const fcon = document.getElementById('dashFilterConsultant').value || 'كل الاستشاريين';
+      const fst = document.getElementById('dashFilterStatus').value || 'كل الحالات';
+
+      const imgWorkTypes = document.getElementById('chartWorkTypes').toDataURL('image/png', 1.0);
+      const imgContractors = document.getElementById('chartContractors').toDataURL('image/png', 1.0);
+      const imgOffices = document.getElementById('chartOffices').toDataURL('image/png', 1.0);
+      const imgWorkDescs = document.getElementById('chartWorkDescs').toDataURL('image/png', 1.0);
+      const imgDelayNotes = document.getElementById('chartTopDelayNotes').toDataURL('image/png', 1.0);
+      const imgDelayCont = document.getElementById('chartDelayByContractor').toDataURL('image/png', 1.0);
+
+      lastReportTitle = `Dashboard_${fc}_${todayISO()}`;
+      document.getElementById('reportModalTitle').textContent = 'معاينة لوحة التحكم التنفيذية (Dashboard PDF)';
+
+      const printArea = document.getElementById('printArea');
+      printArea.innerHTML = `
+        <!-- Explicit Navy Header with High Contrast White Text -->
+        <div style="background:#0B2545; color:#ffffff; border-radius:16px; padding:20px 24px; display:flex; flex-wrap:wrap; justify-content:space-between; align-items:center; gap:12px;">
+          <div>
+            <h1 style="font-size:20px; font-weight:900; color:#ffffff; margin:0;">لوحة التحكم التنفيذية (Dashboard) — فواتير الصيانة والطوارئ</h1>
+            <p style="font-size:12px; color:#cbd5e1; margin:4px 0 0;">قسم استلام الأصول — نسخة مصدّرة مطابقة لواجهة لوحة التحكم</p>
+          </div>
+          <div style="text-align:left; font-size:11px; color:#e2e8f0;">
+            <div>تاريخ التصدير: <b style="color:#ffffff;">${new Date().toLocaleString('ar-SA')}</b></div>
+            <div>المُصدر: <b style="color:#ffffff;">${escapeHtml(currentSession?.name || '')}</b></div>
+          </div>
+        </div>
+
+        <!-- Applied Filters Strip -->
+        <div style="background:#f8fafc; border:1px solid #cbd5e1; border-radius:12px; padding:12px 16px; font-size:11px; font-weight:700; color:#0B2545;">
+          معايير التصفية المطبّقة (${data.length} فاتورة):
+          المقاول: <span style="color:#F26522;">${escapeHtml(fc)}</span> |
+          المكتب: <span style="color:#F26522;">${escapeHtml(fo)}</span> |
+          نوع العمل: <span style="color:#F26522;">${escapeHtml(fw)}</span> |
+          الاستشاري: <span style="color:#F26522;">${escapeHtml(fcon)}</span> |
+          الحالة: <span style="color:#F26522;">${escapeHtml(fst)}</span>
+        </div>
+
+        <!-- KPIs Summary Grid -->
+        <div style="display:grid; grid-template-columns:repeat(6, 1fr); gap:10px;">
+          <div style="border:1px solid #e2e8f0; border-radius:12px; padding:10px; text-align:center;">
+            <div style="font-size:11px; color:#64748b; font-weight:700;">إجمالي الفواتير</div>
+            <div style="font-size:20px; font-weight:900; color:#0B2545;">${document.getElementById('kpiTotal').textContent}</div>
+          </div>
+          <div style="border:1px solid #a7f3d0; border-radius:12px; padding:10px; text-align:center;">
+            <div style="font-size:11px; color:#047857; font-weight:700;">معتمد</div>
+            <div style="font-size:20px; font-weight:900; color:#059669;">${document.getElementById('kpiApproved').textContent}</div>
+          </div>
+          <div style="border:1px solid #fecdd3; border-radius:12px; padding:10px; text-align:center;">
+            <div style="font-size:11px; color:#be123c; font-weight:700;">ملاحظة / مرفوض</div>
+            <div style="font-size:20px; font-weight:900; color:#e11d48;">${document.getElementById('kpiFlagged').textContent}</div>
+          </div>
+          <div style="border:1px solid #fed7aa; border-radius:12px; padding:10px; text-align:center;">
+            <div style="font-size:11px; color:#c2410c; font-weight:700;">فواتير الطوارئ</div>
+            <div style="font-size:20px; font-weight:900; color:#0B2545;">${document.getElementById('kpiEmergency').textContent}</div>
+          </div>
+          <div style="border:1px solid #bae6fd; border-radius:12px; padding:10px; text-align:center;">
+            <div style="font-size:11px; color:#0369a1; font-weight:700;">أعمال الصيانة</div>
+            <div style="font-size:20px; font-weight:900; color:#0B2545;">${document.getElementById('kpiMaintenance').textContent}</div>
+          </div>
+          <div style="border:1px solid #fde68a; border-radius:12px; padding:10px; text-align:center;">
+            <div style="font-size:11px; color:#b45309; font-weight:700;">أعمال C4C</div>
+            <div style="font-size:20px; font-weight:900; color:#0B2545;">${document.getElementById('kpiC4c').textContent}</div>
+          </div>
+        </div>
+
+        <div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:10px;">
+          <div style="border:1px solid #a7f3d0; border-radius:12px; padding:10px; text-align:center;">
+            <div style="font-size:11px; color:#047857; font-weight:700;">جديد (1-3 أيام عمل)</div>
+            <div style="font-size:18px; font-weight:900; color:#059669;">${document.getElementById('kpiSlaNew').textContent}</div>
+          </div>
+          <div style="border:1px solid #fde68a; border-radius:12px; padding:10px; text-align:center;">
+            <div style="font-size:11px; color:#b45309; font-weight:700;">متأخر (4-5 أيام عمل)</div>
+            <div style="font-size:18px; font-weight:900; color:#d97706;">${document.getElementById('kpiSlaLate').textContent}</div>
+          </div>
+          <div style="border:1px solid #fecdd3; border-radius:12px; padding:10px; text-align:center;">
+            <div style="font-size:11px; color:#be123c; font-weight:700;">مصعّد (+5 أيام عمل)</div>
+            <div style="font-size:18px; font-weight:900; color:#e11d48;">${document.getElementById('kpiSlaEscalated').textContent}</div>
+          </div>
+        </div>
+
+        <!-- Charts Images -->
+        <div style="border:1px solid #e2e8f0; border-radius:14px; padding:14px;">
+          <h3 style="font-size:13px; font-weight:900; color:#0B2545; margin:0 0 10px;">توزيع أنواع الأعمال</h3>
+          <div style="display:flex; align-items:center; gap:16px; flex-wrap:wrap;">
+            <img src="${imgWorkTypes}" style="height:170px; object-fit:contain;" />
+            <div style="flex:1; display:grid; grid-template-columns:repeat(2,1fr); gap:8px;">${document.getElementById('workTypesLegendGrid').innerHTML}</div>
+          </div>
+        </div>
+
+        <div style="border:1px solid #e2e8f0; border-radius:14px; padding:14px;">
+          <h3 style="font-size:13px; font-weight:900; color:#0B2545; margin:0 0 10px;">عدد الفواتير حسب المقاول وحالة الاعتماد</h3>
+          <img src="${imgContractors}" style="width:100%; max-height:290px; object-fit:contain;" />
+        </div>
+
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:14px;">
+          <div style="border:1px solid #e2e8f0; border-radius:14px; padding:14px;">
+            <h3 style="font-size:13px; font-weight:900; color:#0B2545; margin:0 0 10px;">توزيع الفواتير حسب المكاتب</h3>
+            <img src="${imgOffices}" style="width:100%; max-height:220px; object-fit:contain;" />
+          </div>
+          <div style="border:1px solid #e2e8f0; border-radius:14px; padding:14px;">
+            <h3 style="font-size:13px; font-weight:900; color:#0B2545; margin:0 0 10px;">أكثر أوصاف الأعمال تكراراً</h3>
+            <img src="${imgWorkDescs}" style="width:100%; max-height:220px; object-fit:contain;" />
+          </div>
+        </div>
+
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:14px;">
+          <div style="border:1px solid #e2e8f0; border-radius:14px; padding:14px;">
+            <h3 style="font-size:13px; font-weight:900; color:#0B2545; margin:0 0 10px;">مؤشر أبرز أسباب تأخر إنجاز الفواتير</h3>
+            <img src="${imgDelayNotes}" style="width:100%; max-height:220px; object-fit:contain;" />
+          </div>
+          <div style="border:1px solid #e2e8f0; border-radius:14px; padding:14px;">
+            <h3 style="font-size:13px; font-weight:900; color:#0B2545; margin:0 0 10px;">أكثر 5 مقاولين عليهم ملاحظات</h3>
+            <img src="${imgDelayCont}" style="width:100%; max-height:220px; object-fit:contain;" />
+          </div>
+        </div>
+      `;
+
+      openModal('reportPreviewModal');
+    }
+
+    function openExecutiveReportPreview() {
+      const scorecard = buildContractorScorecardData();
+      lastReportTitle = `التقرير_التنفيذي_الشامل_${todayISO()}`;
+      document.getElementById('reportModalTitle').textContent = 'معاينة التقرير التنفيذي الشامل (PDF)';
+
+      const total = appState.invoices.length;
+      const approved = appState.invoices.filter(x => x.status === 'معتمد').length;
+      const flagged = appState.invoices.filter(x => x.status === 'مرفوض' || x.status === 'ملاحظات معلقة').length;
+
+      document.getElementById('printArea').innerHTML = `
+        <div style="background:#0B2545; color:#ffffff; border-radius:16px; padding:20px 24px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
+          <div>
+            <h1 style="font-size:20px; font-weight:900; color:#ffffff; margin:0;">التقرير التنفيذي الشامل لفواتير الصيانة والطوارئ</h1>
+            <p style="font-size:12px; color:#cbd5e1; margin:4px 0 0;">قسم استلام الأصول — إجمالي الفواتير: ${total} | المعتمدة: ${approved} | عليها ملاحظات: ${flagged}</p>
+          </div>
+          <div style="font-size:11px; color:#e2e8f0; text-align:left;">
+            <div>تاريخ الإصدار: <b style="color:#fff;">${new Date().toLocaleString('ar-SA')}</b></div>
+            <div>المُصدر: <b style="color:#fff;">${escapeHtml(currentSession?.name || '')}</b></div>
+          </div>
+        </div>
+
+        <div>
+          <h3 style="font-size:14px; font-weight:900; color:#0B2545; margin:0 0 10px;">ملخص أداء المقاولين حسب نوع العمل</h3>
+          <table style="width:100%; border-collapse:collapse; font-size:11px; text-align:right;">
+            <thead>
+              <tr style="background:#0B2545; color:#ffffff;">
+                <th style="padding:8px; border:1px solid #cbd5e1;">المقاول</th>
+                <th style="padding:8px; border:1px solid #cbd5e1; text-align:center;">الإجمالي</th>
+                <th style="padding:8px; border:1px solid #cbd5e1; text-align:center;">طوارئ</th>
+                <th style="padding:8px; border:1px solid #cbd5e1; text-align:center;">صيانة معدة</th>
+                <th style="padding:8px; border:1px solid #cbd5e1; text-align:center;">صيانة مغذي</th>
+                <th style="padding:8px; border:1px solid #cbd5e1; text-align:center;">C4C</th>
+                <th style="padding:8px; border:1px solid #cbd5e1; text-align:center;">معتمد</th>
+                <th style="padding:8px; border:1px solid #cbd5e1; text-align:center;">مرفوض/ملاحظات</th>
+                <th style="padding:8px; border:1px solid #cbd5e1; text-align:center;">نسبة الاعتماد</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${scorecard.map(r => `
+                <tr>
+                  <td style="padding:7px; border:1px solid #e2e8f0; font-weight:700;">${escapeHtml(r.contractor)}</td>
+                  <td style="padding:7px; border:1px solid #e2e8f0; text-align:center; font-weight:800;">${r.total}</td>
+                  <td style="padding:7px; border:1px solid #e2e8f0; text-align:center;">${r.emergency}</td>
+                  <td style="padding:7px; border:1px solid #e2e8f0; text-align:center;">${r.maintEquip}</td>
+                  <td style="padding:7px; border:1px solid #e2e8f0; text-align:center;">${r.maintFeeder}</td>
+                  <td style="padding:7px; border:1px solid #e2e8f0; text-align:center;">${r.c4c}</td>
+                  <td style="padding:7px; border:1px solid #e2e8f0; text-align:center; color:#059669; font-weight:700;">${r.approved}</td>
+                  <td style="padding:7px; border:1px solid #e2e8f0; text-align:center; color:#e11d48; font-weight:700;">${r.flagged}</td>
+                  <td style="padding:7px; border:1px solid #e2e8f0; text-align:center; font-weight:800;">${r.rate}%</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+      `;
+      openModal('reportPreviewModal');
+    }
+
+    async function downloadPreviewAsPdf() {
+      const el = document.getElementById('printArea');
+      if (typeof html2pdf === 'undefined') {
+        showToast('جاري فتح الطباعة لحفظ PDF...', 'info');
+        window.print();
+        return;
+      }
+      const btn = document.getElementById('btnDownloadDirectPdf');
+      btn.disabled = true;
+      showToast('جاري تجهيز وتنزيل ملف PDF...', 'info');
+      try {
+        await html2pdf().set({
+          margin: 8,
+          filename: `${lastReportTitle}.pdf`,
+          image: { type: 'jpeg', quality: 0.96 },
+          html2canvas: { scale: 2, useCORS: true, backgroundColor: '#ffffff' },
+          jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' }
+        }).from(el).save();
+        showToast('تم حفظ ملف PDF بنجاح', 'success');
+      } catch (e) {
+        console.error(e);
+        showToast('تعذر الحفظ المباشر، يمكنك استخدام زر طباعة أو تنزيل HTML', 'warning');
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    function downloadPreviewAsHtml() {
+      const content = document.getElementById('printArea').innerHTML;
+      const html = `<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <title>${escapeHtml(lastReportTitle)}</title>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;800;900&display=swap" rel="stylesheet" />
+  <style>
+    body { font-family: 'Cairo', sans-serif; background: #f8fafc; color: #0f172a; margin: 0; padding: 24px; }
+    .wrap { max-width: 1150px; margin: 0 auto; background: #fff; padding: 24px; border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.06); }
+    .wrap > * + * { margin-top: 16px; }
+    .print-btn { background: #F26522; color: #fff; border: none; padding: 10px 20px; border-radius: 10px; font-family: Cairo; font-weight: 800; cursor: pointer; margin-bottom: 16px; }
+    @media print { .print-btn { display: none; } body { background: #fff; padding: 0; } .wrap { box-shadow: none; padding: 0; } }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <button class="print-btn" onclick="window.print()">طباعة / حفظ PDF</button>
+    ${content}
+  </div>
+</body>
+</html>`;
+      triggerBlobDownload(new Blob([html], { type: 'text/html;charset=utf-8' }), `${lastReportTitle}.html`);
+      showToast('تم تنزيل ملف HTML المنسق للطباعة بنجاح', 'success');
+    }
+
+    // ==================== REPORTS MODULE ====================
+    function buildContractorScorecardData() {
+      const map = {};
+      appState.invoices.forEach(inv => {
+        if (!map[inv.contractor]) {
+          map[inv.contractor] = { contractor: inv.contractor, total: 0, emergency: 0, maintEquip: 0, maintFeeder: 0, c4c: 0, approved: 0, flagged: 0 };
+        }
+        const r = map[inv.contractor];
+        r.total++;
+        if (inv.workType === 'طوارئ') r.emergency++;
+        else if (inv.workType === 'صيانة معدة') r.maintEquip++;
+        else if (inv.workType === 'صيانة مغذي') r.maintFeeder++;
+        else if (inv.workType === 'C4C') r.c4c++;
+        if (inv.status === 'معتمد') r.approved++;
+        else if (inv.status === 'مرفوض' || inv.status === 'ملاحظات معلقة') r.flagged++;
+      });
+      return Object.values(map).map(r => ({
+        ...r,
+        rate: r.total ? Math.round((r.approved / r.total) * 100) : 0
+      })).sort((a, b) => b.total - a.total);
+    }
+
+    function renderReportsModule() {
+      const rows = buildContractorScorecardData();
+      document.getElementById('reportsScorecardTbody').innerHTML = rows.map(r => `
+        <tr class="hover:bg-slate-50">
+          <td class="p-3 font-extrabold text-navy-900">${escapeHtml(r.contractor)}</td>
+          <td class="p-3 text-center font-black">${r.total}</td>
+          <td class="p-3 text-center">${r.emergency}</td>
+          <td class="p-3 text-center">${r.maintEquip}</td>
+          <td class="p-3 text-center">${r.maintFeeder}</td>
+          <td class="p-3 text-center">${r.c4c}</td>
+          <td class="p-3 text-center font-bold text-emerald-600">${r.approved}</td>
+          <td class="p-3 text-center font-bold text-rose-600">${r.flagged}</td>
+          <td class="p-3 text-center">
+            <span class="px-2.5 py-0.5 rounded-full text-[11px] font-extrabold ${r.rate >= 70 ? 'bg-emerald-100 text-emerald-800' : r.rate >= 30 ? 'bg-amber-100 text-amber-800' : 'bg-rose-100 text-rose-800'}">${r.rate}%</span>
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    // ==================== USERS & PERMISSIONS (ADMIN 100889) ====================
+    function renderUsersManagement() {
+      const isSuperAdmin = currentSession?.role === 'admin';
+      document.getElementById('staffUsersTbody').innerHTML = appState.staff.map((u, idx) => `
+        <tr class="hover:bg-slate-50">
+          <td class="p-2.5 font-mono font-extrabold text-navy-900">${escapeHtml(u.id)}</td>
+          <td class="p-2.5 font-bold">${escapeHtml(u.name)}</td>
+          <td class="p-2.5">
+            <select ${!isSuperAdmin || u.id === '100889' ? 'disabled' : ''} onchange="updateStaffRole(${idx}, this.value)"
+              class="rounded-lg border border-slate-300 bg-white py-1 px-2 text-xs font-bold outline-none disabled:bg-slate-100">
+              <option value="admin" ${u.role === 'admin' ? 'selected' : ''}>مدير نظام (كامل)</option>
+              <option value="reviewer" ${u.role === 'reviewer' ? 'selected' : ''}>موظف شركة (مراجعة واعتماد)</option>
+              <option value="viewer" ${u.role === 'viewer' ? 'selected' : ''}>مراقب (عرض وتقارير)</option>
+            </select>
+          </td>
+          <td class="p-2.5 text-center">
+            <button onclick="adminResetStaffPass(${idx})" class="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-navy-900 hover:text-white text-[11px] font-bold transition">تعيين 1234</button>
+          </td>
+        </tr>
+      `).join('');
+
+      const q = (document.getElementById('adminContractorSearch').value || '').trim().toLowerCase();
+      document.getElementById('contractorsDirTbody').innerHTML = appState.contractors
+        .map((c, idx) => ({ c, idx }))
+        .filter(({ c }) => c.name.toLowerCase().includes(q))
+        .map(({ c, idx }) => `
+          <tr class="hover:bg-slate-50">
+            <td class="p-2.5 font-bold text-navy-900">${escapeHtml(c.name)}</td>
+            <td class="p-2.5 text-center">
+              <input type="text" value="${escapeHtml(c.pin)}" onchange="updateContractorPin(${idx}, this.value)"
+                class="w-20 text-center rounded-lg border border-slate-300 bg-slate-50 py-1 px-1.5 font-mono font-bold text-xs" dir="ltr" />
+            </td>
+            <td class="p-2.5 text-center">
+              <button onclick="toggleContractorActive(${idx})" class="px-2.5 py-1 rounded-full text-[11px] font-extrabold ${c.active ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'}">
+                ${c.active ? 'نشط' : 'موقوف'}
+              </button>
+            </td>
+          </tr>
+        `).join('');
+
+      document.getElementById('auditLogTbody').innerHTML = appState.auditLog.slice(0, 60).map(l => `
+        <tr>
+          <td class="p-2.5 font-mono text-slate-500">${escapeHtml(l.time)}</td>
+          <td class="p-2.5 font-bold text-navy-900">${escapeHtml(l.user)}</td>
+          <td class="p-2.5 font-extrabold text-accent-600">${escapeHtml(l.action)}</td>
+          <td class="p-2.5 text-slate-600">${escapeHtml(l.details)}</td>
+        </tr>
+      `).join('');
+    }
+
+    function updateStaffRole(idx, newRole) {
+      const u = appState.staff[idx];
+      if (!u) return;
+      u.role = newRole;
+      saveState();
+      logAudit('تعديل صلاحية موظف', `${u.name} (${u.id}) ← ${newRole}`);
+      showToast(`تم تحديث صلاحية ${u.name} بنجاح`, 'success');
+    }
+
+    function adminResetStaffPass(idx) {
+      const u = appState.staff[idx];
+      if (!u) return;
+      u.password = '1234';
+      saveState();
+      logAudit('إعادة تعيين كلمة سر موظف', `${u.name} (${u.id})`);
+      showToast(`تم إعادة تعيين كلمة سر ${u.name} إلى 1234`, 'info');
+    }
+
+    function updateContractorPin(idx, newPin) {
+      const pin = String(newPin || '').trim();
+      if (!pin) return;
+      appState.contractors[idx].pin = pin;
+      saveState();
+      logAudit('تعديل الرقم السري لمقاول', `${appState.contractors[idx].name}`);
+      showToast(`تم حفظ الرقم السري الجديد لـ ${appState.contractors[idx].name}`, 'success');
+    }
+
+    function toggleContractorActive(idx) {
+      const c = appState.contractors[idx];
+      c.active = !c.active;
+      saveState();
+      logAudit('تغيير حالة مقاول', `${c.name} ← ${c.active ? 'نشط' : 'موقوف'}`);
+      renderUsersManagement();
+    }
+
+    function openAddContractorModal() {
+      document.getElementById('ncName').value = '';
+      document.getElementById('ncPin').value = String(1001 + appState.contractors.length);
+      openModal('addContractorModal');
+    }
+
+    function handleAddContractor(e) {
+      e.preventDefault();
+      const name = document.getElementById('ncName').value.trim();
+      const pin = document.getElementById('ncPin').value.trim();
+      if (!name || appState.contractors.some(c => c.name === name)) {
+        showToast('اسم المقاول موجود مسبقاً أو غير صالح', 'error');
+        return;
+      }
+      appState.contractors.push({ name, pin, active: true });
+      saveState();
+      populateStaticSelects();
+      logAudit('إضافة مقاول جديد', name);
+      closeModal('addContractorModal');
+      showToast(`تمت إضافة ${name} بنجاح`, 'success');
+      renderUsersManagement();
+    }
+
+    // ==================== DROPBOX CLOUD INTEGRATION ====================
+    function renderDropboxSettings() {
+      document.getElementById('odClientId').value = appState.oneDrive.clientId || '';
+      document.getElementById('odBaseFolder').value = appState.oneDrive.baseFolder || '/فواتير_الصيانة_والطوارئ';
+      document.getElementById('odAccessToken').value = appState.oneDrive.accessToken || '';
+
+      const badge = document.getElementById('odStatusBadge');
+      if (appState.oneDrive.accessToken) {
+        badge.className = 'text-xs font-extrabold px-3 py-1 rounded-full bg-emerald-100 text-emerald-800';
+        badge.textContent = appState.oneDrive.connectedEmail ? `متصل (${appState.oneDrive.connectedEmail})` : 'متصل بـ Dropbox';
+      } else {
+        badge.className = 'text-xs font-extrabold px-3 py-1 rounded-full bg-amber-100 text-amber-800';
+        badge.textContent = 'غير متصل';
+      }
+
+      // Visual Folder Tree: Base Folder -> Contractor Name -> Work Order Number -> Photos
+      const base = '/' + String(appState.oneDrive.baseFolder || '/فواتير_الصيانة_والطوارئ').replace(/^\/+|\/+$/g, '');
+      const tree = {};
+      let totalPhotos = 0;
+      appState.invoices.forEach(inv => {
+        if (inv.photos && inv.photos.length) {
+          const cName = sanitizeDropboxSegment(inv.contractor, 'مقاول');
+          const pName = sanitizeDropboxSegment(inv.wo, 'مشروع');
+          if (!tree[cName]) tree[cName] = {};
+          if (!tree[cName][pName]) tree[cName][pName] = [];
+          inv.photos.forEach(p => {
+            p.projectName = pName;
+            p.oneDrivePath = buildDropboxPhotoPath(inv.contractor, inv.wo, p.name);
+            tree[cName][pName].push(p);
+            totalPhotos++;
+          });
+        }
+      });
+
+      document.getElementById('odTotalPhotosCount').textContent = totalPhotos;
+      const lines = [`<div class="text-amber-400 font-bold">📁 Dropbox${escapeHtml(base)}</div>`];
+      Object.entries(tree).forEach(([cName, projects]) => {
+        lines.push(`<div class="pl-4 text-sky-300 font-bold">├─ 📂 ${escapeHtml(cName)}</div>`);
+        Object.entries(projects).forEach(([woFolder, photos]) => {
+          lines.push(`<div class="pl-8 text-emerald-300">├─ 📂 ${escapeHtml(woFolder)}</div>`);
+          photos.forEach(p => {
+            lines.push(`<div class="pl-12 text-slate-300 text-[11px]">└─ 🖼️ ${escapeHtml(p.name)} ${p.synced ? '✅' : '⏳'}</div>`);
+          });
+        });
+      });
+      document.getElementById('odFolderTreePreview').innerHTML = lines.join('');
+    }
+
+    function saveOneDriveConfig() {
+      appState.oneDrive.clientId = document.getElementById('odClientId').value.trim();
+      appState.oneDrive.baseFolder = document.getElementById('odBaseFolder').value.trim() || '/فواتير_الصيانة_والطوارئ';
+      appState.oneDrive.accessToken = document.getElementById('odAccessToken').value.trim();
+      saveState();
+      renderDropboxSettings();
+      showToast('تم حفظ إعدادات Dropbox بنجاح', 'success');
+    }
+
+    function connectOneDriveOAuth() {
+      const appKey = document.getElementById('odClientId').value.trim();
+      if (!appKey) { showToast('يرجى إدخال مفتاح تطبيق Dropbox (App Key) أولاً', 'warning'); return; }
+      const redirectUri = encodeURIComponent(window.location.href.split('#')[0]);
+      window.open(`https://www.dropbox.com/oauth2/authorize?client_id=${encodeURIComponent(appKey)}&response_type=token&redirect_uri=${redirectUri}`, '_blank', 'width=600,height=700');
+      showToast('تم فتح نافذة تفويض Dropbox', 'info');
+    }
+
+    async function verifyOneDriveToken() {
+      saveOneDriveConfig();
+      const token = appState.oneDrive.accessToken;
+      if (!token) { showToast('يرجى إدخال رمز الوصول (Access Token) أولاً', 'warning'); return; }
+      try {
+        const res = await fetch('https://api.dropboxapi.com/2/users/get_current_account', {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (!res.ok) throw new Error('Unauthorized');
+        const info = await res.json();
+        appState.oneDrive.connectedEmail = info.email || info.name?.display_name || 'Dropbox';
+        saveState();
+        renderDropboxSettings();
+        showToast(`تم الاتصال بنجاح بحساب Dropbox (${appState.oneDrive.connectedEmail})`, 'success');
+      } catch {
+        showToast('تعذر التحقق من رمز Dropbox، تأكد من صحة Access Token والصلاحيات', 'error');
+      }
+    }
+
+    async function ensureDropboxFolder(path) {
+      try {
+        await fetch('https://api.dropboxapi.com/2/files/create_folder_v2', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${appState.oneDrive.accessToken}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ path, autorename: false })
+        });
+      } catch {}
+    }
+
+    async function uploadSinglePhotoToDropbox(photoObj) {
+      if (!appState.oneDrive.accessToken || !photoObj?.dataUrl) return false;
+      try {
+        const fullPath = photoObj.oneDrivePath;
+        const folderPath = fullPath.substring(0, fullPath.lastIndexOf('/'));
+        await ensureDropboxFolder(folderPath);
+        const blob = await (await fetch(photoObj.dataUrl)).blob();
+        const res = await fetch('https://content.dropboxapi.com/2/files/upload', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${appState.oneDrive.accessToken}`,
+            'Dropbox-API-Arg': JSON.stringify({ path: fullPath, mode: 'overwrite', autorename: true }),
+            'Content-Type': 'application/octet-stream'
+          },
+          body: blob
+        });
+        return res.ok;
+      } catch {
+        return false;
+      }
+    }
+
+    async function syncLocalPhotosToOneDrive() {
+      if (!appState.oneDrive.accessToken) {
+        showToast('يرجى ربط حساب Dropbox وإدخال Access Token أولاً', 'warning');
+        return;
+      }
+      let syncedCount = 0;
+      showToast('جاري مزامنة الصور المحلية إلى Dropbox...', 'info');
+      for (const inv of appState.invoices) {
+        for (const p of (inv.photos || [])) {
+          if (!p.synced) {
+            p.oneDrivePath = buildDropboxPhotoPath(inv.contractor, inv.wo, p.name);
+            const ok = await uploadSinglePhotoToDropbox(p);
+            if (ok) { p.synced = true; syncedCount++; }
+          }
+        }
+      }
+      saveState();
+      renderDropboxSettings();
+      showToast(syncedCount ? `تمت مزامنة ${syncedCount} صورة إلى Dropbox بنجاح` : 'لا توجد صور غير متزامنة أو تعذر الاتصال', syncedCount ? 'success' : 'info');
+    }
+
+    // Capture Dropbox OAuth token from URL hash if redirected back
+    function checkDropboxOAuthHash() {
+      if (window.location.hash && window.location.hash.includes('access_token=')) {
+        const params = new URLSearchParams(window.location.hash.slice(1));
+        const tok = params.get('access_token');
+        if (tok) {
+          appState.oneDrive.accessToken = tok;
+          saveState();
+          history.replaceState(null, '', window.location.pathname);
+          showToast('تم استلام رمز الدخول من Dropbox بنجاح', 'success');
+        }
+      }
+    }
+
+    // ==================== INITIALIZATION ====================
+    window.addEventListener('DOMContentLoaded', () => {
+      loadState();
+      checkDropboxOAuthHash();
+      populateStaticSelects();
+      switchLoginTab('staff');
+      lucide.createIcons();
+    });
+  </script>
+</body>
+</html>

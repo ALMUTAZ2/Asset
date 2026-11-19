@@ -1,0 +1,213 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Global default-deny safety net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // ==================== PRIMITIVE HELPERS ====================
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isValidString(val, minLen, maxLen) {
+      return val is string && val.size() >= minLen && val.size() <= maxLen;
+    }
+
+    // ==================== VALIDATION BLUEPRINTS ====================
+    function isValidStaffUser(data) {
+      return data.keys().hasAll(['id', 'name', 'username', 'passwordHash', 'role', 'updatedAt'])
+        && data.keys().hasOnly(['id', 'name', 'username', 'passwordHash', 'role', 'updatedAt'])
+        && isValidId(data.id)
+        && isValidString(data.name, 1, 120)
+        && isValidId(data.username)
+        && data.username.size() <= 64
+        && isValidString(data.passwordHash, 16, 128)
+        && data.role in ['admin', 'reviewer', 'viewer']
+        && isValidString(data.updatedAt, 1, 64);
+    }
+
+    function isValidContractor(data) {
+      return data.keys().hasAll(['id', 'name', 'pin', 'active', 'updatedAt'])
+        && data.keys().hasOnly(['id', 'name', 'pin', 'active', 'updatedAt'])
+        && isValidId(data.id)
+        && isValidString(data.name, 1, 150)
+        && isValidString(data.pin, 1, 32)
+        && data.active is bool
+        && isValidString(data.updatedAt, 1, 64);
+    }
+
+    function isValidPhotosList(photos) {
+      return photos is list
+        && photos.size() <= 8
+        && (photos.size() == 0 || photos[0] is map);
+    }
+
+    function isValidInvoice(data) {
+      return data.keys().hasAll([
+          'id', 'seq', 'wo', 'contractor', 'consultant', 'invoiceDate',
+          'workType', 'workDesc', 'equipType', 'funcLoc', 'office',
+          'deliveryDate', 'note', 'status', 'quality', 'checklist', 'photos', 'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'id', 'seq', 'wo', 'contractor', 'consultant', 'invoiceDate',
+          'workType', 'workDesc', 'equipType', 'funcLoc', 'office',
+          'deliveryDate', 'note', 'status', 'quality', 'checklist', 'photos', 'updatedAt'
+        ])
+        && isValidId(data.id)
+        && data.seq is number && data.seq >= 0 && data.seq <= 10000000
+        && isValidString(data.wo, 1, 80)
+        && isValidString(data.contractor, 1, 150)
+        && isValidString(data.consultant, 0, 100)
+        && isValidString(data.invoiceDate, 0, 32)
+        && isValidString(data.workType, 0, 60)
+        && isValidString(data.workDesc, 0, 300)
+        && isValidString(data.equipType, 0, 60)
+        && isValidString(data.funcLoc, 0, 120)
+        && isValidString(data.office, 0, 80)
+        && isValidString(data.deliveryDate, 0, 32)
+        && isValidString(data.note, 0, 500)
+        && data.status in ['معتمد', 'قيد المراجعة', 'ملاحظات معلقة', 'مرفوض']
+        && isValidString(data.quality, 0, 80)
+        && data.checklist is map
+        && isValidPhotosList(data.photos)
+        && isValidString(data.updatedAt, 1, 64);
+    }
+
+    function isValidAuditLog(data) {
+      return data.keys().hasAll(['id', 'time', 'user', 'action', 'details', 'createdAtMs'])
+        && data.keys().hasOnly(['id', 'time', 'user', 'action', 'details', 'createdAtMs'])
+        && isValidId(data.id)
+        && isValidString(data.time, 1, 64)
+        && isValidString(data.user, 1, 160)
+        && isValidString(data.action, 1, 120)
+        && isValidString(data.details, 0, 500)
+        && data.createdAtMs is number;
+    }
+
+    function isValidOneDriveSettings(data) {
+      return data.keys().hasAll(['clientId', 'tenantId', 'baseFolder', 'connectedUser', 'updatedAt'])
+        && data.keys().hasOnly(['clientId', 'tenantId', 'baseFolder', 'connectedUser', 'updatedAt'])
+        && isValidString(data.clientId, 0, 128)
+        && isValidString(data.tenantId, 0, 128)
+        && isValidString(data.baseFolder, 0, 200)
+        && isValidString(data.connectedUser, 0, 150)
+        && isValidString(data.updatedAt, 1, 64);
+    }
+
+    function isValidSeedState(data) {
+      return data.keys().hasAll(['seeded', 'version', 'seededAt'])
+        && data.keys().hasOnly(['seeded', 'version', 'seededAt'])
+        && data.seeded == true
+        && data.version is number && data.version >= 1
+        && isValidString(data.seededAt, 1, 64);
+    }
+
+    // ==================== COLLECTION RULES ====================
+
+    // Connection check document
+    match /test/connection {
+      allow get: if true;
+      allow list, write: if false;
+    }
+
+    // Staff Users & RBAC Roles (keyed by employee username)
+    match /staff_users/{username} {
+      allow get: if isValidId(username);
+      allow list: if request.query.limit <= 500;
+      allow create: if isValidId(username)
+        && isValidStaffUser(incoming())
+        && incoming().username == username;
+      allow update: if isValidId(username)
+        && isValidStaffUser(incoming())
+        && incoming().id == existing().id
+        && incoming().username == existing().username
+        && (username != '100889' || incoming().role == 'admin')
+        && (
+          incoming().diff(existing()).affectedKeys().hasOnly(['passwordHash', 'updatedAt']) ||
+          incoming().diff(existing()).affectedKeys().hasOnly(['role', 'updatedAt']) ||
+          incoming().diff(existing()).affectedKeys().hasOnly(['name', 'role', 'passwordHash', 'updatedAt'])
+        );
+      allow delete: if isValidId(username) && username != '100889';
+    }
+
+    // Contractors Directory
+    match /contractors/{contractorId} {
+      allow get: if isValidId(contractorId);
+      allow list: if request.query.limit <= 500;
+      allow create: if isValidId(contractorId)
+        && isValidContractor(incoming())
+        && incoming().id == contractorId;
+      allow update: if isValidId(contractorId)
+        && isValidContractor(incoming())
+        && incoming().id == existing().id
+        && (
+          incoming().diff(existing()).affectedKeys().hasOnly(['pin', 'updatedAt']) ||
+          incoming().diff(existing()).affectedKeys().hasOnly(['active', 'updatedAt']) ||
+          incoming().diff(existing()).affectedKeys().hasOnly(['name', 'pin', 'active', 'updatedAt'])
+        );
+      allow delete: if isValidId(contractorId);
+    }
+
+    // Maintenance & Emergency Invoices
+    match /invoices/{invoiceId} {
+      allow get: if isValidId(invoiceId);
+      allow list: if request.query.limit <= 5000;
+      allow create: if isValidId(invoiceId)
+        && isValidInvoice(incoming())
+        && incoming().id == invoiceId;
+      allow update: if isValidId(invoiceId)
+        && isValidInvoice(incoming())
+        && incoming().id == existing().id
+        && (
+          incoming().diff(existing()).affectedKeys().hasOnly(['status', 'note', 'updatedAt']) ||
+          incoming().diff(existing()).affectedKeys().hasOnly(['status', 'quality', 'note', 'updatedAt']) ||
+          incoming().diff(existing()).affectedKeys().hasOnly(['photos', 'updatedAt']) ||
+          incoming().diff(existing()).affectedKeys().hasOnly([
+            'wo', 'contractor', 'consultant', 'invoiceDate', 'workType', 'workDesc',
+            'equipType', 'funcLoc', 'office', 'deliveryDate', 'note', 'status',
+            'quality', 'checklist', 'photos', 'updatedAt'
+          ])
+        );
+      allow delete: if isValidId(invoiceId);
+    }
+
+    // Immutable Audit Logs (append-only)
+    match /audit_logs/{logId} {
+      allow get: if isValidId(logId);
+      allow list: if request.query.limit <= 200;
+      allow create: if isValidId(logId)
+        && isValidAuditLog(incoming())
+        && incoming().id == logId;
+      allow update, delete: if false;
+    }
+
+    // Shared App Settings (OneDrive non-secret metadata only)
+    match /app_settings/{settingId} {
+      allow get: if settingId == 'onedrive';
+      allow list: if false;
+      allow create: if settingId == 'onedrive' && isValidOneDriveSettings(incoming());
+      allow update: if settingId == 'onedrive'
+        && isValidOneDriveSettings(incoming())
+        && incoming().diff(existing()).affectedKeys().hasOnly(['clientId', 'tenantId', 'baseFolder', 'connectedUser', 'updatedAt']);
+      allow delete: if false;
+    }
+
+    // System Initialization Seed Marker
+    match /system_meta/{metaId} {
+      allow get: if metaId == 'seed_state';
+      allow list: if false;
+      allow create: if metaId == 'seed_state' && isValidSeedState(incoming());
+      allow update, delete: if false;
+    }
+  }
+}

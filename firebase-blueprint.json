@@ -1,0 +1,274 @@
+{
+  "entities": {
+    "StaffUser": {
+      "title": "StaffUser",
+      "description": "Company department employee account with role-based permissions and SHA-256 hashed password.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "maxLength": 64,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "username": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "passwordHash": {
+          "type": "string",
+          "minLength": 16,
+          "maxLength": 128
+        },
+        "role": {
+          "type": "string",
+          "enum": ["admin", "reviewer", "viewer"]
+        },
+        "updatedAt": {
+          "type": "string",
+          "maxLength": 64
+        }
+      },
+      "required": ["id", "name", "username", "passwordHash", "role", "updatedAt"]
+    },
+    "Contractor": {
+      "title": "Contractor",
+      "description": "Contractor organization account with portal PIN and active status.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "maxLength": 64,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 150
+        },
+        "pin": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 32
+        },
+        "active": {
+          "type": "boolean"
+        },
+        "updatedAt": {
+          "type": "string",
+          "maxLength": 64
+        }
+      },
+      "required": ["id", "name", "pin", "active", "updatedAt"]
+    },
+    "Invoice": {
+      "title": "Invoice",
+      "description": "Maintenance or emergency work order invoice submitted by contractors and reviewed by company staff.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "maxLength": 64,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "seq": {
+          "type": "number"
+        },
+        "wo": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "contractor": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 150
+        },
+        "consultant": {
+          "type": "string",
+          "maxLength": 100
+        },
+        "invoiceDate": {
+          "type": "string",
+          "maxLength": 32
+        },
+        "workType": {
+          "type": "string",
+          "maxLength": 60
+        },
+        "workDesc": {
+          "type": "string",
+          "maxLength": 300
+        },
+        "equipType": {
+          "type": "string",
+          "maxLength": 60
+        },
+        "funcLoc": {
+          "type": "string",
+          "maxLength": 120
+        },
+        "office": {
+          "type": "string",
+          "maxLength": 80
+        },
+        "deliveryDate": {
+          "type": "string",
+          "maxLength": 32
+        },
+        "note": {
+          "type": "string",
+          "maxLength": 500
+        },
+        "status": {
+          "type": "string",
+          "enum": ["معتمد", "قيد المراجعة", "ملاحظات معلقة", "مرفوض"]
+        },
+        "quality": {
+          "type": "string",
+          "maxLength": 80
+        },
+        "checklist": {
+          "type": "object"
+        },
+        "photos": {
+          "type": "array"
+        },
+        "updatedAt": {
+          "type": "string",
+          "maxLength": 64
+        }
+      },
+      "required": [
+        "id",
+        "seq",
+        "wo",
+        "contractor",
+        "consultant",
+        "invoiceDate",
+        "workType",
+        "workDesc",
+        "equipType",
+        "funcLoc",
+        "office",
+        "deliveryDate",
+        "note",
+        "status",
+        "quality",
+        "checklist",
+        "photos",
+        "updatedAt"
+      ]
+    },
+    "AuditLog": {
+      "title": "AuditLog",
+      "description": "Append-only operational audit record capturing logins, approvals, user/role updates, and exports.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "maxLength": 64,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "time": {
+          "type": "string",
+          "maxLength": 64
+        },
+        "user": {
+          "type": "string",
+          "maxLength": 160
+        },
+        "action": {
+          "type": "string",
+          "maxLength": 120
+        },
+        "details": {
+          "type": "string",
+          "maxLength": 500
+        },
+        "createdAtMs": {
+          "type": "number"
+        }
+      },
+      "required": ["id", "time", "user", "action", "details", "createdAtMs"]
+    },
+    "OneDriveSettings": {
+      "title": "OneDriveSettings",
+      "description": "Shared Microsoft OneDrive folder and Azure client configuration (access tokens are never stored in Firestore).",
+      "type": "object",
+      "properties": {
+        "clientId": {
+          "type": "string",
+          "maxLength": 128
+        },
+        "tenantId": {
+          "type": "string",
+          "maxLength": 128
+        },
+        "baseFolder": {
+          "type": "string",
+          "maxLength": 200
+        },
+        "connectedUser": {
+          "type": "string",
+          "maxLength": 150
+        },
+        "updatedAt": {
+          "type": "string",
+          "maxLength": 64
+        }
+      },
+      "required": ["clientId", "tenantId", "baseFolder", "connectedUser", "updatedAt"]
+    },
+    "SeedState": {
+      "title": "SeedState",
+      "description": "Idempotency marker tracking whether default platform seed data has been populated.",
+      "type": "object",
+      "properties": {
+        "seeded": {
+          "type": "boolean"
+        },
+        "version": {
+          "type": "number"
+        },
+        "seededAt": {
+          "type": "string",
+          "maxLength": 64
+        }
+      },
+      "required": ["seeded", "version", "seededAt"]
+    }
+  },
+  "firestore": {
+    "/staff_users/{username}": {
+      "schema": { "$ref": "#/entities/StaffUser" },
+      "description": "Company staff accounts and RBAC roles keyed by employee username/ID."
+    },
+    "/contractors/{contractorId}": {
+      "schema": { "$ref": "#/entities/Contractor" },
+      "description": "Directory of contractor companies with portal PINs and active flags."
+    },
+    "/invoices/{invoiceId}": {
+      "schema": { "$ref": "#/entities/Invoice" },
+      "description": "Maintenance and emergency invoices with SLA dates, review notes, checklists, and compressed photo metadata."
+    },
+    "/audit_logs/{logId}": {
+      "schema": { "$ref": "#/entities/AuditLog" },
+      "description": "Immutable operational audit log entries."
+    },
+    "/app_settings/{settingId}": {
+      "schema": { "$ref": "#/entities/OneDriveSettings" },
+      "description": "Non-secret OneDrive integration settings."
+    },
+    "/system_meta/{metaId}": {
+      "schema": { "$ref": "#/entities/SeedState" },
+      "description": "System initialization seed marker."
+    }
+  }
+}
