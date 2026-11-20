@@ -365,11 +365,12 @@ export function createDashboardAndExportController(ctx: DashboardExportContext) 
       sortedNotes: Array<[string, number]>;
     }>
   ): void {
-    const darkTooltip = {
-      backgroundColor: '#0B2545',
+    const isDark = document.documentElement.classList.contains('dark');
+    const chartTooltip = {
+      backgroundColor: isDark ? 'rgba(15, 23, 42, 0.96)' : '#00183A',
       titleColor: '#ffffff',
       bodyColor: '#f8fafc',
-      borderColor: '#F26522',
+      borderColor: isDark ? '#38bdf8' : '#0080FF',
       borderWidth: 1,
       padding: 10,
       cornerRadius: 10,
@@ -377,6 +378,12 @@ export function createDashboardAndExportController(ctx: DashboardExportContext) 
       bodyFont: { family: 'Cairo', size: 11, weight: 700 as const },
       rtl: true,
     };
+
+    const axisColor = isDark ? '#e2e8f0' : '#00183A';
+    const gridColor = isDark ? 'rgba(148, 178, 230, 0.12)' : '#e2e8f0';
+    const pillBg = isDark ? '#1e293b' : '#eef3f9';
+    const pillColor = isDark ? '#f8fafc' : '#00183A';
+    const pillBorder = isDark ? '#334155' : '#cbd5e1';
 
     const makeHBarPill = (bg: string, color: string, border: string) => ({
       anchor: 'end' as const,
@@ -427,10 +434,10 @@ export function createDashboardAndExportController(ctx: DashboardExportContext) 
                 offset: 8,
                 clip: false,
                 textAlign: 'center',
-                backgroundColor: '#eef3f9',
-                borderColor: '#cbd5e1',
+                backgroundColor: pillBg,
+                borderColor: pillBorder,
                 borderWidth: 1,
-                color: '#0B2545',
+                color: pillColor,
                 borderRadius: 6,
                 padding: { top: 2, bottom: 2, left: 8, right: 8 },
                 font: { weight: 800, size: 11, family: 'Cairo' },
@@ -448,6 +455,7 @@ export function createDashboardAndExportController(ctx: DashboardExportContext) 
             legend: {
               position: 'bottom',
               labels: {
+                color: axisColor,
                 font: { size: 11, weight: 700 },
                 usePointStyle: true,
                 boxWidth: 8,
@@ -455,7 +463,7 @@ export function createDashboardAndExportController(ctx: DashboardExportContext) 
               },
             },
             tooltip: {
-              ...darkTooltip,
+              ...chartTooltip,
               filter: (item) => item.dataset.label !== '__total__',
             },
             datalabels: {
@@ -470,8 +478,8 @@ export function createDashboardAndExportController(ctx: DashboardExportContext) 
             },
           },
           scales: {
-            x: { stacked: true, beginAtZero: true, grace: '15%', grid: { color: '#f1f5f9' }, ticks: { maxRotation: 0, autoSkip: true, font: { size: 11 } } },
-            y: { stacked: true, grid: { display: false }, ticks: { font: { size: 11, weight: 700 }, color: '#0B2545' } },
+            x: { stacked: true, beginAtZero: true, grace: '15%', grid: { color: gridColor }, ticks: { color: axisColor, maxRotation: 0, autoSkip: true, font: { size: 11 } } },
+            y: { stacked: true, grid: { display: false }, ticks: { font: { size: 11, weight: 700 }, color: axisColor } },
           },
         },
       });
@@ -483,10 +491,15 @@ export function createDashboardAndExportController(ctx: DashboardExportContext) 
     data.forEach((i) => {
       wtMap[i.workType] = (wtMap[i.workType] || 0) + 1;
     });
-    const wtColors = ['#F26522', '#0B2545', '#0ea5e9', '#f59e0b'];
+    const wtColors = isDark
+      ? ['#fb923c', '#38bdf8', '#0ea5e9', '#facc15']
+      : ['#ea580c', '#0027B9', '#0284c7', '#d97706'];
     const wtTotal = data.length;
     const centerEl = document.getElementById('workTypesTotalCenter');
-    if (centerEl) centerEl.textContent = String(wtTotal);
+    if (centerEl) {
+      centerEl.textContent = String(wtTotal);
+      centerEl.style.color = axisColor;
+    }
 
     const breakdownEl = document.getElementById('workTypesBreakdown');
     if (breakdownEl) {
@@ -520,7 +533,7 @@ export function createDashboardAndExportController(ctx: DashboardExportContext) 
               data: WORK_TYPES.map((w) => wtMap[w]),
               backgroundColor: wtColors,
               borderWidth: 2,
-              borderColor: '#ffffff',
+              borderColor: isDark ? '#0d1830' : '#ffffff',
               hoverOffset: 6,
             },
           ],
@@ -533,7 +546,7 @@ export function createDashboardAndExportController(ctx: DashboardExportContext) 
             legend: { display: false },
             datalabels: { display: false },
             tooltip: {
-              ...darkTooltip,
+              ...chartTooltip,
               callbacks: {
                 label: (c) => {
                   const v = Number(c.parsed || 0);
@@ -565,8 +578,8 @@ export function createDashboardAndExportController(ctx: DashboardExportContext) 
             {
               label: 'عدد الفواتير',
               data: offEntries.map((e) => e[1]),
-              backgroundColor: '#0B2545',
-              hoverBackgroundColor: '#F26522',
+              backgroundColor: isDark ? '#38bdf8' : '#0027B9',
+              hoverBackgroundColor: isDark ? '#60a5fa' : '#0080FF',
               borderRadius: 7,
               maxBarThickness: 32,
             },
@@ -578,17 +591,17 @@ export function createDashboardAndExportController(ctx: DashboardExportContext) 
           layout: { padding: { top: 24 } },
           plugins: {
             legend: { display: false },
-            tooltip: darkTooltip,
+            tooltip: chartTooltip,
             datalabels: {
               anchor: 'end',
               align: 'top',
               offset: 4,
               clip: false,
               textAlign: 'center',
-              backgroundColor: '#eef3f9',
-              borderColor: '#cbd5e1',
+              backgroundColor: pillBg,
+              borderColor: pillBorder,
               borderWidth: 1,
-              color: '#0B2545',
+              color: pillColor,
               borderRadius: 6,
               padding: { top: 2, bottom: 2, left: 7, right: 7 },
               font: { weight: 800, size: 11, family: 'Cairo' },
@@ -596,8 +609,8 @@ export function createDashboardAndExportController(ctx: DashboardExportContext) 
             },
           },
           scales: {
-            x: { grid: { display: false }, ticks: { font: { size: 11, weight: 700 }, color: '#0B2545' } },
-            y: { beginAtZero: true, grace: '15%', grid: { color: '#f1f5f9' }, ticks: { font: { size: 11 } } },
+            x: { grid: { display: false }, ticks: { font: { size: 11, weight: 700 }, color: axisColor } },
+            y: { beginAtZero: true, grace: '15%', grid: { color: gridColor }, ticks: { color: isDark ? '#94a3b8' : '#64748b', font: { size: 11 } } },
           },
         },
       });
@@ -622,8 +635,8 @@ export function createDashboardAndExportController(ctx: DashboardExportContext) 
             {
               label: 'التكرار',
               data: dEntries.map((e) => e[1]),
-              backgroundColor: '#F26522',
-              hoverBackgroundColor: '#d95314',
+              backgroundColor: isDark ? '#fb923c' : '#F26522',
+              hoverBackgroundColor: isDark ? '#f97316' : '#d95314',
               borderRadius: 7,
               maxBarThickness: 22,
             },
@@ -636,19 +649,21 @@ export function createDashboardAndExportController(ctx: DashboardExportContext) 
           layout: { padding: { right: 44 } },
           plugins: {
             legend: { display: false },
-            tooltip: darkTooltip,
-            datalabels: makeHBarPill('#fff4ee', '#b8420d', '#fed7aa'),
+            tooltip: chartTooltip,
+            datalabels: makeHBarPill(isDark ? '#332014' : '#fff4ee', isDark ? '#fdba74' : '#b8420d', isDark ? '#7c2d12' : '#fed7aa'),
           },
           scales: {
-            x: { beginAtZero: true, grace: '20%', grid: { color: '#f1f5f9' }, ticks: { maxRotation: 0, autoSkip: true, font: { size: 11 } } },
-            y: { grid: { display: false }, ticks: { font: { size: 11, weight: 700 }, color: '#0B2545' } },
+            x: { beginAtZero: true, grace: '20%', grid: { color: gridColor }, ticks: { color: isDark ? '#94a3b8' : '#64748b', maxRotation: 0, autoSkip: true, font: { size: 11 } } },
+            y: { grid: { display: false }, ticks: { font: { size: 11, weight: 700 }, color: axisColor } },
           },
         },
       });
     }
 
     // 5. Top Delay Root Causes Horizontal Bar
-    const noteColors = ['#e11d48', '#f43f5e', '#fb7185', '#f97316', '#f59e0b'];
+    const noteColors = isDark
+      ? ['#f43f5e', '#fb7185', '#fb923c', '#facc15', '#38bdf8']
+      : ['#e11d48', '#f43f5e', '#fb7185', '#f97316', '#f59e0b'];
     destroyChart('topDelayNotes');
     const dnCanvas = document.getElementById('chartTopDelayNotes') as HTMLCanvasElement | null;
     if (dnCanvas) {
@@ -673,12 +688,12 @@ export function createDashboardAndExportController(ctx: DashboardExportContext) 
           layout: { padding: { right: 48 } },
           plugins: {
             legend: { display: false },
-            tooltip: darkTooltip,
-            datalabels: makeHBarPill('#fff1f2', '#be123c', '#fecdd3'),
+            tooltip: chartTooltip,
+            datalabels: makeHBarPill(isDark ? '#3b1219' : '#fff1f2', isDark ? '#fda4af' : '#be123c', isDark ? '#881337' : '#fecdd3'),
           },
           scales: {
-            x: { beginAtZero: true, grace: '20%', grid: { color: '#f1f5f9' }, ticks: { stepSize: 1, maxRotation: 0, autoSkip: true, font: { size: 11 } } },
-            y: { grid: { display: false }, ticks: { font: { size: 11, weight: 700 }, color: '#0B2545' } },
+            x: { beginAtZero: true, grace: '20%', grid: { color: gridColor }, ticks: { color: isDark ? '#94a3b8' : '#64748b', stepSize: 1, maxRotation: 0, autoSkip: true, font: { size: 11 } } },
+            y: { grid: { display: false }, ticks: { font: { size: 11, weight: 700 }, color: axisColor } },
           },
         },
       });
@@ -697,7 +712,9 @@ export function createDashboardAndExportController(ctx: DashboardExportContext) 
             {
               label: 'الفواتير المتوقفة',
               data: delayByContractor.map((d) => d.total),
-              backgroundColor: ['#0B2545', '#163b6b', '#e11d48', '#F26522', '#f59e0b'],
+              backgroundColor: isDark
+                ? ['#38bdf8', '#818cf8', '#f43f5e', '#fb923c', '#fbbf24']
+                : ['#001F5E', '#0027B9', '#e11d48', '#0080FF', '#f59e0b'],
               borderRadius: 7,
               maxBarThickness: 26,
             },
@@ -710,9 +727,9 @@ export function createDashboardAndExportController(ctx: DashboardExportContext) 
           layout: { padding: { right: 48 } },
           plugins: {
             legend: { display: false },
-            datalabels: makeHBarPill('#eef3f9', '#0B2545', '#cbd5e1'),
+            datalabels: makeHBarPill(pillBg, pillColor, pillBorder),
             tooltip: {
-              ...darkTooltip,
+              ...chartTooltip,
               callbacks: {
                 title: (items) => {
                   const d = delayByContractor[items[0].dataIndex];
@@ -727,8 +744,8 @@ export function createDashboardAndExportController(ctx: DashboardExportContext) 
             },
           },
           scales: {
-            x: { beginAtZero: true, grace: '20%', grid: { color: '#f1f5f9' }, ticks: { stepSize: 1, maxRotation: 0, autoSkip: true, font: { size: 11 } } },
-            y: { grid: { display: false }, ticks: { font: { size: 10.5, weight: 700 }, color: '#0B2545' } },
+            x: { beginAtZero: true, grace: '20%', grid: { color: gridColor }, ticks: { color: isDark ? '#94a3b8' : '#64748b', stepSize: 1, maxRotation: 0, autoSkip: true, font: { size: 11 } } },
+            y: { grid: { display: false }, ticks: { font: { size: 10.5, weight: 700 }, color: axisColor } },
           },
         },
       });
@@ -740,7 +757,7 @@ export function createDashboardAndExportController(ctx: DashboardExportContext) 
     const filterInfo = getActiveDashFilterInfo();
     const hintEl = document.getElementById('dashActiveFilterHint');
     if (hintEl) {
-      hintEl.innerHTML = `<i data-lucide="sliders-horizontal" class="w-3.5 h-3.5 text-navy-700"></i><span>نطاق التصدير الحالي (${data.length} فاتورة): <b class="text-se-dark-blue">${escapeHtml(filterInfo.summaryText)}</b></span>`;
+      hintEl.innerHTML = `<i data-lucide="sliders-horizontal" class="w-3.5 h-3.5 text-se-mid-blue"></i><span>نطاق التصدير الحالي (${data.length} فاتورة): <b class="font-extrabold text-se-mid-blue">${escapeHtml(filterInfo.summaryText)}</b></span>`;
     }
 
     const total = data.length;
@@ -1456,6 +1473,16 @@ export function createDashboardAndExportController(ctx: DashboardExportContext) 
     `;
     openReportPrintPreview(cardHtml, `بطاقة_امر_عمل_${inv.wo}_${todayISO()}`);
   }
+
+  window.addEventListener('se-theme-changed', () => {
+    try {
+      if (ctx.getInvoices().length > 0) {
+        renderDashboard();
+      }
+    } catch {
+      /* ignore */
+    }
+  });
 
   return {
     renderDashboard,

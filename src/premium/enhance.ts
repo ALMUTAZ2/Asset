@@ -52,6 +52,7 @@ function setTheme(dark: boolean, btn?: HTMLElement) {
     btn.title = btn.getAttribute('aria-label')!;
   }
   applyChartTheme();
+  window.dispatchEvent(new CustomEvent('se-theme-changed', { detail: { dark } }));
 }
 
 function initTheme() {

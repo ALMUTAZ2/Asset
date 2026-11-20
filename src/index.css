@@ -233,21 +233,19 @@ body {
   to { opacity: 1; transform: translateY(0); }
 }
 
-@media (prefers-color-scheme: dark) {
-  body { background-color: #081426; color: #e8eef8; }
-  #staffView, #contractorView { background-color: #081426; }
-  #staffView header.bg-white, #contractorView header.bg-white { background-color: #101f34; border-color: rgba(148, 163, 184, .16); }
-  #staffView main .bg-white, #contractorView main .bg-white { background-color: #101f34; color: #e8eef8; border-color: rgba(148, 163, 184, .16); }
-  #staffView main .bg-slate-50, #contractorView main .bg-slate-50,
-  #staffView main .bg-slate-100, #contractorView main .bg-slate-100 { background-color: #172840; }
-  #staffView main .text-se-dark-blue, #contractorView main .text-se-dark-blue { color: #b9d9ff; }
-  #staffView main .text-slate-500, #contractorView main .text-slate-500,
-  #staffView main .text-slate-600, #contractorView main .text-slate-600 { color: #aab9ce; }
-  #staffView main .border-slate-100, #contractorView main .border-slate-100,
-  #staffView main .border-slate-200, #contractorView main .border-slate-200 { border-color: rgba(148, 163, 184, .16); }
-  #staffView input, #staffView select, #staffView textarea,
-  #contractorView input, #contractorView select, #contractorView textarea { background-color: #0d1b2e; color: #e8eef8; border-color: #34455e; }
-}
+html.dark body { background-color: #060e1f; color: #e8eef8; }
+html.dark #staffView, html.dark #contractorView { background-color: #060e1f; }
+html.dark #staffView header.bg-white, html.dark #contractorView header.bg-white { background-color: #0d1830; border-color: rgba(148, 178, 230, .16); }
+html.dark #staffView main .bg-white, html.dark #contractorView main .bg-white { background-color: #0d1830; color: #e8eef8; border-color: rgba(148, 178, 230, .16); }
+html.dark #staffView main .bg-slate-50, html.dark #contractorView main .bg-slate-50,
+html.dark #staffView main .bg-slate-100, html.dark #contractorView main .bg-slate-100 { background-color: #14223f; }
+html.dark #staffView main .text-se-dark-blue, html.dark #contractorView main .text-se-dark-blue { color: #f8fafc; }
+html.dark #staffView main .text-slate-500, html.dark #contractorView main .text-slate-500,
+html.dark #staffView main .text-slate-600, html.dark #contractorView main .text-slate-600 { color: #cbd5e1; }
+html.dark #staffView main .border-slate-100, html.dark #contractorView main .border-slate-100,
+html.dark #staffView main .border-slate-200, html.dark #contractorView main .border-slate-200 { border-color: rgba(148, 178, 230, .16); }
+html.dark #staffView input, html.dark #staffView select, html.dark #staffView textarea,
+html.dark #contractorView input, html.dark #contractorView select, html.dark #contractorView textarea { background-color: #0a1427; color: #e8eef8; border-color: rgba(148, 178, 230, .24); }
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
