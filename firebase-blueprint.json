@@ -25,6 +25,23 @@
           "type": "string",
           "enum": ["admin", "reviewer", "viewer"]
         },
+        "password": {
+          "type": "string",
+          "minLength": 4,
+          "maxLength": 128
+        },
+        "passwordHash": {
+          "type": "string",
+          "maxLength": 256
+        },
+        "pin": {
+          "type": "string",
+          "maxLength": 32
+        },
+        "createdAt": {
+          "type": "string",
+          "maxLength": 64
+        },
         "updatedAt": {
           "type": "string",
           "maxLength": 64
@@ -49,6 +66,15 @@
         },
         "active": {
           "type": "boolean"
+        },
+        "pin": {
+          "type": "string",
+          "minLength": 4,
+          "maxLength": 32
+        },
+        "createdAt": {
+          "type": "string",
+          "maxLength": 64
         },
         "updatedAt": {
           "type": "string",
@@ -203,7 +229,7 @@
         },
         "baseFolder": {
           "type": "string",
-          "maxLength": 200
+          "maxLength": 128
         },
         "connectedUser": {
           "type": "string",

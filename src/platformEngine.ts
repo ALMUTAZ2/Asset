@@ -17,6 +17,8 @@ import {
   fsCreateStaffUser,
   fsDeleteInvoice,
   fsDeleteStaffUser,
+  fsGetStaffUser,
+  fsListContractors,
   fsSaveInvoice,
   fsSaveOneDriveSettings,
   fsToggleContractorActive,
@@ -26,6 +28,7 @@ import {
   fsUpdateStaffRole,
   sanitizeId,
   subscribeAllCollections,
+  verifyStaffPassword,
 } from './firestoreStore';
 import {
   CONSULTANTS,
@@ -387,21 +390,32 @@ export function initPlatformEngine(onFatalError?: (err: Error) => void): () => v
 
   async function loadPublicContractorNames(): Promise<void> {
     if (!contractorNamesRequest) {
-      contractorNamesRequest = fetch('/api/auth/contractors', { cache: 'no-store' })
-        .then(async (response) => {
-          if (!response.ok) return;
-          const result = (await response.json().catch(() => ({}))) as { names?: unknown };
-          if (Array.isArray(result.names) && result.names.length > 0) {
-            publicContractorNames = result.names.filter((name): name is string => typeof name === 'string');
+      contractorNamesRequest = (async () => {
+        try {
+          const response = await fetch('/api/auth/contractors', { cache: 'no-store' });
+          if (response.ok) {
+            const result = (await response.json().catch(() => ({}))) as { names?: unknown };
+            if (Array.isArray(result.names) && result.names.length > 0) {
+              publicContractorNames = result.names.filter((name): name is string => typeof name === 'string');
+              return;
+            }
           }
-        })
-        .catch(() => {
-          // Keep default contractor list if offline or running dev mode
-        })
-        .finally(() => {
-          contractorNamesRequest = null;
-          renderContractorDropdown($<HTMLInputElement>('contractorSearchInput')?.value || '');
-        });
+        } catch {
+          // Fallback to Firestore
+        }
+        try {
+          const remoteContractors = await fsListContractors();
+          const activeNames = remoteContractors.filter((c) => c.active !== false).map((c) => c.name);
+          if (activeNames.length > 0) {
+            publicContractorNames = activeNames;
+          }
+        } catch {
+          // Keep default contractor list if offline
+        }
+      })().finally(() => {
+        contractorNamesRequest = null;
+        renderContractorDropdown($<HTMLInputElement>('contractorSearchInput')?.value || '');
+      });
     }
     await contractorNamesRequest;
   }
@@ -501,8 +515,8 @@ export function initPlatformEngine(onFatalError?: (err: Error) => void): () => v
       showErr('سجّل الدخول إلى حساب الموظف لتغيير كلمة المرور.');
       return;
     }
-    if (newPass.length < 10) {
-      showErr('يجب أن تتكون كلمة المرور الجديدة من 10 خانات على الأقل.');
+    if (newPass.length < 4) {
+      showErr('يجب أن تتكون كلمة المرور الجديدة من 4 خانات على الأقل.');
       return;
     }
     if (newPass !== confirmPass) {
@@ -510,11 +524,27 @@ export function initPlatformEngine(onFatalError?: (err: Error) => void): () => v
       return;
     }
 
+    const currentUserRecord: StaffUser = appState.staffUsers.find(
+      (u) => u.username.toLowerCase() === username
+    ) || {
+      id: `st_${username}`,
+      name: currentSession.name,
+      username,
+      role: (currentSession.role as StaffRole) || 'reviewer',
+      updatedAt: new Date().toISOString(),
+    };
+
     try {
-      await fsChangeOwnPassword(currentPass, newPass);
+      await fsChangeOwnPassword(currentPass, newPass, currentUserRecord);
+      const localUser = appState.staffUsers.find((u) => u.username.toLowerCase() === username);
+      if (localUser) {
+        localUser.password = newPass;
+        localUser.updatedAt = new Date().toISOString();
+      }
       logAudit('تغيير كلمة المرور', `تم تحديث كلمة المرور للموظف: ${currentSession.name} (${currentSession.username})`);
       closeModal('resetPassModal');
-      showToast('تم تحديث كلمة المرور بأمان.', 'success');
+      if (currentStaffSection === 'users') renderUsersManagement();
+      showToast('تم تحديث كلمة المرور وحفظها في قاعدة البيانات بنجاح.', 'success');
     } catch (error) {
       showErr(error instanceof Error ? error.message : 'تعذر تحديث كلمة المرور حالياً.');
     }
@@ -554,20 +584,26 @@ export function initPlatformEngine(onFatalError?: (err: Error) => void): () => v
       // Local dev server fallback
     }
 
-    // Local / direct authentication fallback
+    // Local / Firestore direct authentication fallback
     if (payload.type === 'staff') {
-      const user = (payload.username || '').trim().toLowerCase();
+      const user = sanitizeId((payload.username || '').trim()).toLowerCase();
       const pass = (payload.password || '').trim();
 
-      const isDefaultAdmin = user === '100889' && (pass === '1234' || pass.length >= 4);
-      const found = appState.staffUsers.find((u) => u.username.toLowerCase() === user);
+      const remoteUser = await fsGetStaffUser(user).catch(() => null);
+      const seedUser = appState.staffUsers.find((u) => u.username.toLowerCase() === user);
+      const found = remoteUser || seedUser;
 
-      if (!isDefaultAdmin && !found) {
+      if (!found) {
         throw new Error('الرقم الوظيفي أو كلمة المرور غير صحيحة.');
       }
 
-      const role = isDefaultAdmin ? 'admin' : (found?.role || 'reviewer');
-      const name = isDefaultAdmin ? 'المعتز محمد ابوطالب' : (found?.name || user);
+      const isPasswordValid = await verifyStaffPassword(found, pass, seedUser);
+      if (!isPasswordValid) {
+        throw new Error('الرقم الوظيفي أو كلمة المرور غير صحيحة.');
+      }
+
+      const role = user === '100889' ? 'admin' : (found.role || 'reviewer');
+      const name = found.name || (user === '100889' ? 'المعتز محمد ابوطالب' : user);
 
       currentSession = {
         type: 'staff',
@@ -593,14 +629,24 @@ export function initPlatformEngine(onFatalError?: (err: Error) => void): () => v
         throw new Error('اختر اسم المقاول وأدخل الرقم السري.');
       }
 
-      const found = appState.contractors.find((c) => c.name === name);
+      const remoteContractors = await fsListContractors().catch(() => []);
+      const remoteFound = remoteContractors.find((c) => c.name === name);
+      const seedFound = appState.contractors.find((c) => c.name === name);
+      const found = remoteFound || seedFound;
+
       if (found && !found.active) {
         throw new Error('تم إيقاف حساب هذا المقاول مؤقتاً، يرجى مراجعة القسم.');
+      }
+
+      const expectedPin = found?.pin || seedFound?.pin;
+      if (expectedPin && pin !== expectedPin) {
+        throw new Error('الرقم السري (PIN) غير صحيح.');
       }
 
       currentSession = {
         type: 'contractor',
         name,
+        contractorId: found?.id,
         role: 'contractor',
       };
 
@@ -1206,13 +1252,7 @@ export function initPlatformEngine(onFatalError?: (err: Error) => void): () => v
     });
     toggleMobileSidebar(false);
 
-    if (sec === 'dashboard') {
-      requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-          dashCtrl.renderDashboard();
-        });
-      });
-    }
+    if (sec === 'dashboard') dashCtrl.renderDashboard();
     if (sec === 'invoices') {
       refreshDynamicMonthSelect();
       renderStaffInvoicesTable();
@@ -1376,8 +1416,9 @@ export function initPlatformEngine(onFatalError?: (err: Error) => void): () => v
       message: `هل تريد اعتماد عدد (${count}) فاتورة محددة دفعة واحدة وتغيير ملاحظتها إلى "تم"؟`,
       onConfirm: async () => {
         const ids = Array.from(selectedInvoiceIds);
+        const matchedInvoices = appState.invoices.filter((inv) => selectedInvoiceIds.has(inv.id));
         try {
-          await fsBulkApproveInvoices(ids);
+          await fsBulkApproveInvoices(ids, matchedInvoices);
           selectedInvoiceIds.clear();
           const selAll = $<HTMLInputElement>('selectAllInv');
           if (selAll) selAll.checked = false;
@@ -1525,7 +1566,7 @@ export function initPlatformEngine(onFatalError?: (err: Error) => void): () => v
     const note = ($<HTMLTextAreaElement>('rmNoteInput')?.value || '').trim() || (status === 'معتمد' ? 'تم' : '');
 
     try {
-      await fsUpdateInvoiceReview(inv.id, status, quality, note);
+      await fsUpdateInvoiceReview(inv.id, status, quality, note, inv);
       logAudit('مراجعة فاتورة', `أمر العمل ${inv.wo} ⇐ ${status} (${note})`);
       closeModal('reviewModal');
       showToast('تم حفظ قرار المراجعة وتحديث السجل في Firestore', 'success');
@@ -1764,22 +1805,22 @@ export function initPlatformEngine(onFatalError?: (err: Error) => void): () => v
       title: 'تعديل الرقم السري للمقاول',
       message: `أدخل الرقم السري (PIN) الجديد لحساب: ${c.name}`,
       withInput: true,
-      placeholder: 'أدخل PIN جديداً (4 أرقام على الأقل)',
+      placeholder: 'أدخل PIN جديداً (4 خانات على الأقل)',
       onConfirm: async (newPin) => {
         if (!newPin) return;
-        const cleanPin = newPin.trim();
-        if (cleanPin.length < 4) {
-          showToast('الرقم السري (PIN) يجب ألا يقل عن 4 أرقام', 'warning');
+        if (newPin.length < 4) {
+          showToast('الرقم السري (PIN) يجب أن يتكون من 4 خانات على الأقل.', 'warning');
           return;
         }
-        c.pin = cleanPin;
-        renderUsersManagement();
         try {
-          await fsUpdateContractorPin(c.id, newPin);
+          await fsUpdateContractorPin(c.id, newPin, c);
+          c.pin = newPin;
+          c.updatedAt = new Date().toISOString();
+          renderUsersManagement();
           logAudit('تعديل PIN مقاول', `تم تحديث الرقم السري للمقاول: ${c.name}`);
-          showToast(`تم تحديث الرقم السري لـ ${c.name} بنجاح`, 'success');
+          showToast(`تم تحديث الرقم السري لـ ${c.name} وحفظه في قاعدة البيانات بنجاح`, 'success');
         } catch {
-          showToast('تم تحديث الرقم السري محلياً (غير متصل بـ Firestore)', 'info');
+          showToast('تعذر حفظ الرقم السري في قاعدة البيانات', 'error');
         }
       },
     });
@@ -1790,9 +1831,12 @@ export function initPlatformEngine(onFatalError?: (err: Error) => void): () => v
     if (!c) return;
     const nextActive = !c.active;
     try {
-      await fsToggleContractorActive(c.id, nextActive);
+      await fsToggleContractorActive(c.id, nextActive, c);
+      c.active = nextActive;
+      c.updatedAt = new Date().toISOString();
+      renderUsersManagement();
       logAudit('تغيير حالة مقاول', `${c.name} ⇐ ${nextActive ? 'تفعيل' : 'إيقاف'}`);
-      showToast(`تم ${nextActive ? 'تفعيل' : 'إيقاف'} حساب ${c.name}`, 'info');
+      showToast(`تم ${nextActive ? 'تفعيل' : 'إيقاف'} حساب ${c.name} وحفظه في قاعدة البيانات`, 'info');
     } catch {
       showToast('تعذر تحديث حالة المقاول في قاعدة البيانات', 'error');
     }
@@ -1801,7 +1845,7 @@ export function initPlatformEngine(onFatalError?: (err: Error) => void): () => v
   function addNewContractorPrompt(): void {
     openConfirmModal({
       title: 'إضافة مقاول جديد للمنصة',
-      message: 'أدخل اسم الشركة أو المؤسسة. سيتم إنشاء PIN عشوائي قوي وعرضه مرة واحدة بعد الحفظ.',
+      message: 'أدخل اسم الشركة أو المؤسسة. سيتم إنشاء رقم سري (PIN) أولي وحفظه في قاعدة البيانات.',
       withInput: true,
       placeholder: 'مثال: شركة النور للمقاولات الكهربائية',
       onConfirm: async (name) => {
@@ -1812,7 +1856,7 @@ export function initPlatformEngine(onFatalError?: (err: Error) => void): () => v
         }
         const pinBytes = new Uint32Array(1);
         crypto.getRandomValues(pinBytes);
-        const initialPin = String(1000 + (pinBytes[0] % 9000));
+        const initialPin = String(100000 + (pinBytes[0] % 900000));
         const newCtr: ContractorRecord = {
           id: `ctr_${Date.now()}`,
           name,
@@ -1820,22 +1864,23 @@ export function initPlatformEngine(onFatalError?: (err: Error) => void): () => v
           active: true,
           updatedAt: new Date().toISOString(),
         };
-        appState.contractors.push(newCtr);
-        renderUsersManagement();
         try {
-          await fsCreateContractor({
-            id: newCtr.id,
-            name,
-            active: true,
-            updatedAt: newCtr.updatedAt,
-          }, initialPin);
+          await fsCreateContractor(newCtr, initialPin);
+          if (!appState.contractors.some((c) => c.id === newCtr.id)) {
+            appState.contractors.push(newCtr);
+          }
+          if (!publicContractorNames.includes(name)) {
+            publicContractorNames.push(name);
+          }
+          refreshDynamicContractorSelects();
+          renderUsersManagement();
           logAudit('إضافة مقاول', `تمت إضافة المقاول: ${name}`);
           openConfirmModal({
-            title: 'تم إنشاء حساب المقاول',
-            message: `الرقم السري الأولي لـ ${name}: ${initialPin}. يمكنك إظهاره في أي وقت من جدول المقاولين بالضغط على أيقونة العين.`,
+            title: 'تم إنشاء حساب المقاول وحفظه في قاعدة البيانات',
+            message: `الرقم السري الأولي لـ ${name}: ${initialPin}. يمكنك إظهاره أو تعديله في أي وقت من جدول المقاولين.`,
           });
         } catch {
-          showToast('تمت إضافة المقاول محلياً (غير متصل بـ Firestore)', 'info');
+          showToast('تعذر حفظ المقاول الجديد في قاعدة البيانات', 'error');
         }
       },
     });
@@ -1850,8 +1895,8 @@ export function initPlatformEngine(onFatalError?: (err: Error) => void): () => v
     const role = ($<HTMLSelectElement>('newStaffRole')?.value || 'reviewer') as StaffRole;
 
     if (!name || !username || !password) return;
-    if (password.length < 10) {
-      showToast('كلمة المرور يجب أن تتكون من 10 خانات على الأقل.', 'warning');
+    if (password.length < 4) {
+      showToast('كلمة المرور يجب أن تتكون من 4 خانات على الأقل.', 'warning');
       return;
     }
     if (appState.staffUsers.some((u) => u.username.toLowerCase() === username.toLowerCase())) {
@@ -1860,29 +1905,25 @@ export function initPlatformEngine(onFatalError?: (err: Error) => void): () => v
     }
 
     const newUser: StaffUser = {
-      id: `st_${Date.now()}`,
+      id: `st_${username}`,
       name,
       username,
       role,
       password,
       updatedAt: new Date().toISOString(),
     };
-    appState.staffUsers.push(newUser);
-    renderUsersManagement();
 
     try {
-      await fsCreateStaffUser({
-        id: newUser.id,
-        name,
-        username,
-        role,
-        updatedAt: newUser.updatedAt,
-      }, password);
+      await fsCreateStaffUser(newUser, password);
+      if (!appState.staffUsers.some((u) => u.username.toLowerCase() === username.toLowerCase())) {
+        appState.staffUsers.push(newUser);
+      }
+      renderUsersManagement();
       logAudit('إضافة موظف', `حساب جديد: ${name} (${username})`);
       form.reset();
-      showToast('تم إنشاء حساب الموظف وحفظه بنجاح', 'success');
+      showToast('تم إنشاء حساب الموظف وحفظه في قاعدة البيانات بنجاح', 'success');
     } catch {
-      showToast('تم حفظ الحساب محلياً (غير متصل بـ Firestore)', 'info');
+      showToast('تعذر حفظ حساب الموظف في قاعدة البيانات', 'error');
     }
   }
 
@@ -1893,10 +1934,12 @@ export function initPlatformEngine(onFatalError?: (err: Error) => void): () => v
     if (!user || user.username === '100889') return;
     try {
       await fsDeleteStaffUser(user.username);
+      appState.staffUsers = appState.staffUsers.filter((u) => u.username !== user.username);
+      renderUsersManagement();
       logAudit('حذف موظف', `تم حذف حساب الموظف: ${user.name} (${user.username})`);
-      showToast('تم حذف حساب الموظف من Firestore', 'info');
+      showToast('تم حذف حساب الموظف من قاعدة البيانات', 'info');
     } catch {
-      showToast('تعذر حذف حساب الموظف', 'error');
+      showToast('تعذر حذف حساب الموظف من قاعدة البيانات', 'error');
     }
   }
 
@@ -1912,12 +1955,15 @@ export function initPlatformEngine(onFatalError?: (err: Error) => void): () => v
     };
     const validRole = (['admin', 'reviewer', 'viewer'].includes(newRole) ? newRole : 'reviewer') as StaffRole;
     try {
-      await fsUpdateStaffRole(user.username, validRole);
+      await fsUpdateStaffRole(user.username, validRole, user);
+      user.role = validRole;
+      user.updatedAt = new Date().toISOString();
+      renderUsersManagement();
       logAudit(
         'تعديل صلاحية موظف',
         `تم تغيير صلاحية ${user.name} (${user.username}) إلى: ${roleAr[validRole] || validRole}`
       );
-      showToast(`تم تحديث صلاحية ${user.name} إلى ${roleAr[validRole] || validRole}`, 'success');
+      showToast(`تم تحديث صلاحية ${user.name} إلى ${roleAr[validRole] || validRole} وحفظها في قاعدة البيانات`, 'success');
     } catch {
       showToast('تعذر تحديث صلاحية الموظف في قاعدة البيانات', 'error');
     }
@@ -2601,7 +2647,7 @@ export function initPlatformEngine(onFatalError?: (err: Error) => void): () => v
     // Persist updated photo sync statuses to Firestore
     const modifiedInvoices = appState.invoices.filter((inv) => (inv.photos || []).some((p) => p.synced));
     for (const inv of modifiedInvoices) {
-      await fsUpdateInvoicePhotos(inv.id, inv.photos).catch(() => {});
+      await fsUpdateInvoicePhotos(inv.id, inv.photos, inv).catch(() => {});
     }
 
     renderDropboxModule();

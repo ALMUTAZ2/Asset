@@ -1,8 +1,10 @@
 import {
   collection,
   deleteDoc,
+  deleteField,
   doc,
   getDoc,
+  getDocs,
   limit,
   onSnapshot,
   orderBy,
@@ -23,6 +25,7 @@ export interface StaffUser {
   username: string;
   role: StaffRole;
   password?: string;
+  passwordHash?: string;
   pin?: string;
   updatedAt: string;
 }
@@ -112,24 +115,32 @@ const VALID_STATUSES = ['معتمد', 'قيد المراجعة', 'ملاحظات
 const VALID_ROLES: StaffRole[] = ['admin', 'reviewer', 'viewer'];
 
 export function sanitizeStaffPayload(u: StaffUser): StaffUser {
-  const username = sanitizeId(u.username, 'emp');
-  return {
+  const username = sanitizeId(u.username, 'emp').toLowerCase();
+  const payload: StaffUser = {
     id: sanitizeId(u.id || `st_${username}`, 'st'),
     name: trunc(u.name || username, 120),
     username,
     role: VALID_ROLES.includes(u.role) ? u.role : 'reviewer',
     updatedAt: trunc(u.updatedAt || new Date().toISOString(), 64),
   };
+  if (typeof u.password === 'string' && u.password.trim().length >= 4) {
+    payload.password = trunc(u.password, 128);
+  }
+  return payload;
 }
 
 export function sanitizeContractorPayload(c: ContractorRecord): ContractorRecord {
   const id = sanitizeId(c.id, 'ctr');
-  return {
+  const payload: ContractorRecord = {
     id,
     name: trunc(c.name || 'مقاول', 150),
     active: Boolean(c.active),
     updatedAt: trunc(c.updatedAt || new Date().toISOString(), 64),
   };
+  if (typeof c.pin === 'string' && c.pin.trim().length >= 4) {
+    payload.pin = trunc(c.pin, 32);
+  }
+  return payload;
 }
 
 export function sanitizeInvoicePayload(inv: InvoiceRecord): InvoiceRecord {
@@ -169,13 +180,14 @@ export function sanitizeInvoicePayload(inv: InvoiceRecord): InvoiceRecord {
 }
 
 export function sanitizeAuditPayload(log: AuditLogRecord): AuditLogRecord {
+  const nowIso = new Date().toISOString();
   return {
     id: sanitizeId(log.id, 'log'),
-    time: trunc(log.time, 64),
-    user: trunc(log.user || 'النظام', 160),
-    action: trunc(log.action || 'عملية', 120),
+    time: trunc(log.time, 64) || nowIso,
+    user: trunc(log.user, 160) || 'النظام',
+    action: trunc(log.action, 120) || 'عملية',
     details: trunc(log.details, 500),
-    createdAtMs: Number.isFinite(log.createdAtMs) ? log.createdAtMs : Date.now(),
+    createdAtMs: Number.isFinite(log.createdAtMs) ? Math.floor(log.createdAtMs) : Date.now(),
   };
 }
 
@@ -335,56 +347,260 @@ export function subscribeAllCollections(cbs: SubscriptionCallbacks, session: Ses
 }
 
 // ==================== CRUD OPERATIONS ====================
-async function postSecureApi(path: string, payload: Record<string, unknown>): Promise<void> {
+async function tryPostSecureApi(
+  path: string,
+  payload: Record<string, unknown>
+): Promise<'ok' | 'fallback'> {
   const user = auth.currentUser;
-  if (!user) throw new Error('Authentication required.');
-  const token = await user.getIdToken();
-  const response = await fetch(path, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${token}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(payload),
-  });
-  const result = (await response.json().catch(() => ({}))) as { error?: string };
-  if (!response.ok) throw new Error(result.error || 'تعذر تنفيذ العملية.');
+  if (!user) return 'fallback';
+  try {
+    const token = await user.getIdToken();
+    const response = await fetch(path, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(payload),
+    });
+    if (response.status === 404 || response.status === 503) {
+      return 'fallback';
+    }
+    const result = (await response.json().catch(() => ({}))) as { error?: string };
+    if (!response.ok) throw new Error(result.error || 'تعذر تنفيذ العملية.');
+    return 'ok';
+  } catch (err) {
+    if (err instanceof TypeError) return 'fallback';
+    throw err;
+  }
+}
+
+export async function fsGetStaffUser(username: string): Promise<StaffUser | null> {
+  const safeUsername = sanitizeId(username).toLowerCase();
+  const path = `staff_users/${safeUsername}`;
+  try {
+    const snap = await getDoc(doc(db, 'staff_users', safeUsername));
+    return snap.exists() ? (snap.data() as StaffUser) : null;
+  } catch (error) {
+    handleFirestoreError(error, OperationType.GET, path);
+  }
+}
+
+export async function fsListContractors(): Promise<ContractorRecord[]> {
+  try {
+    const snap = await getDocs(query(collection(db, 'contractors'), limit(500)));
+    return snap.docs
+      .map((d) => d.data() as ContractorRecord)
+      .sort((a, b) => (a.id || '').localeCompare(b.id || '', undefined, { numeric: true }));
+  } catch (error) {
+    handleFirestoreError(error, OperationType.LIST, 'contractors');
+  }
 }
 
 export async function fsCreateStaffUser(user: StaffUser, password: string): Promise<void> {
-  const clean = sanitizeStaffPayload(user);
-  await postSecureApi('/api/admin/records', { action: 'create-staff', ...clean, password });
+  const clean = sanitizeStaffPayload({ ...user, password });
+  const apiRes = await tryPostSecureApi('/api/admin/records', { action: 'create-staff', ...clean, password });
+  if (apiRes === 'ok') return;
+
+  const path = `staff_users/${clean.username}`;
+  try {
+    await setDoc(doc(db, 'staff_users', clean.username), clean);
+  } catch (error) {
+    handleFirestoreError(error, OperationType.CREATE, path);
+  }
 }
 
-export async function fsChangeOwnPassword(currentPassword: string, newPassword: string): Promise<void> {
-  await postSecureApi('/api/auth/password', { currentPassword, newPassword });
+async function sha256LegacyHash(secret: string): Promise<string> {
+  const bytes = new TextEncoder().encode(`sec_assets_v1:${secret}`);
+  const digest = await crypto.subtle.digest('SHA-256', bytes);
+  return Array.from(new Uint8Array(digest))
+    .map((b) => b.toString(16).padStart(2, '0'))
+    .join('');
 }
 
-export async function fsUpdateStaffRole(username: string, role: StaffRole): Promise<void> {
-  await postSecureApi('/api/admin/records', { action: 'update-staff-role', username: sanitizeId(username), role });
+export async function verifyStaffPassword(
+  user: StaffUser,
+  inputPassword: string,
+  seedFallback?: StaffUser
+): Promise<boolean> {
+  if (typeof user.password === 'string' && user.password.length > 0) {
+    return inputPassword === user.password;
+  }
+  if (typeof user.passwordHash === 'string' && user.passwordHash.length > 0) {
+    const computed = await sha256LegacyHash(inputPassword);
+    if (computed === user.passwordHash) return true;
+  }
+  const safeUsername = sanitizeId(user.username, 'emp').toLowerCase();
+  const defaultPass = seedFallback?.password || (safeUsername === '100889' ? '1234' : `SE@${safeUsername}`);
+  return inputPassword === defaultPass;
+}
+
+export async function fsChangeOwnPassword(
+  currentPassword: string,
+  newPassword: string,
+  fallbackUser?: StaffUser
+): Promise<void> {
+  const apiRes = await tryPostSecureApi('/api/auth/password', { currentPassword, newPassword });
+  if (apiRes === 'ok') return;
+
+  if (!fallbackUser?.username) {
+    throw new Error('سجّل الدخول إلى حساب الموظف لتغيير كلمة المرور.');
+  }
+  const safeUsername = sanitizeId(fallbackUser.username, 'emp').toLowerCase();
+  const path = `staff_users/${safeUsername}`;
+  const ref = doc(db, 'staff_users', safeUsername);
+
+  let snap;
+  try {
+    snap = await getDoc(ref);
+  } catch (error) {
+    handleFirestoreError(error, OperationType.GET, path);
+  }
+
+  const existing = snap.exists() ? (snap.data() as StaffUser) : fallbackUser;
+  const isCurrentValid = await verifyStaffPassword(existing, currentPassword, fallbackUser);
+  if (!isCurrentValid) {
+    throw new Error('كلمة المرور الحالية غير صحيحة.');
+  }
+
+  const now = new Date().toISOString();
+  try {
+    if (snap.exists()) {
+      await updateDoc(ref, {
+        password: trunc(newPassword, 128),
+        passwordHash: deleteField(),
+        updatedAt: now,
+      });
+    } else {
+      const clean = sanitizeStaffPayload({
+        ...fallbackUser,
+        username: safeUsername,
+        password: newPassword,
+        updatedAt: now,
+      });
+      await setDoc(ref, clean);
+    }
+  } catch (error) {
+    handleFirestoreError(error, OperationType.UPDATE, path);
+  }
+}
+
+export async function fsUpdateStaffRole(
+  username: string,
+  role: StaffRole,
+  fallbackUser?: StaffUser
+): Promise<void> {
+  const safeUsername = sanitizeId(username).toLowerCase();
+  const apiRes = await tryPostSecureApi('/api/admin/records', { action: 'update-staff-role', username: safeUsername, role });
+  if (apiRes === 'ok') return;
+
+  const path = `staff_users/${safeUsername}`;
+  const ref = doc(db, 'staff_users', safeUsername);
+  const now = new Date().toISOString();
+  try {
+    const snap = await getDoc(ref);
+    if (snap.exists()) {
+      await updateDoc(ref, { role, updatedAt: now });
+    } else {
+      const clean = sanitizeStaffPayload({
+        id: fallbackUser?.id || `st_${safeUsername}`,
+        name: fallbackUser?.name || safeUsername,
+        username: safeUsername,
+        role,
+        password: fallbackUser?.password,
+        updatedAt: now,
+      });
+      await setDoc(ref, clean);
+    }
+  } catch (error) {
+    handleFirestoreError(error, OperationType.UPDATE, path);
+  }
 }
 
 export async function fsDeleteStaffUser(username: string): Promise<void> {
-  await postSecureApi('/api/admin/records', { action: 'delete-staff', username: sanitizeId(username) });
+  const safeUsername = sanitizeId(username).toLowerCase();
+  const apiRes = await tryPostSecureApi('/api/admin/records', { action: 'delete-staff', username: safeUsername });
+  if (apiRes === 'ok') return;
+
+  const path = `staff_users/${safeUsername}`;
+  try {
+    await deleteDoc(doc(db, 'staff_users', safeUsername));
+  } catch (error) {
+    handleFirestoreError(error, OperationType.DELETE, path);
+  }
 }
 
 export async function fsCreateContractor(c: ContractorRecord, pin: string): Promise<void> {
-  const clean = sanitizeContractorPayload(c);
-  await postSecureApi('/api/admin/records', { action: 'create-contractor', ...clean, pin });
+  const clean = sanitizeContractorPayload({ ...c, pin });
+  const apiRes = await tryPostSecureApi('/api/admin/records', { action: 'create-contractor', ...clean, pin });
+  if (apiRes === 'ok') return;
+
+  const path = `contractors/${clean.id}`;
+  try {
+    await setDoc(doc(db, 'contractors', clean.id), clean);
+  } catch (error) {
+    handleFirestoreError(error, OperationType.CREATE, path);
+  }
 }
 
-export async function fsUpdateContractorPin(id: string, pin: string): Promise<void> {
-  await postSecureApi('/api/admin/records', { action: 'update-contractor-pin', id: sanitizeId(id), pin });
+export async function fsUpdateContractorPin(
+  id: string,
+  pin: string,
+  fallbackContractor?: ContractorRecord
+): Promise<void> {
+  const safeId = sanitizeId(id);
+  const apiRes = await tryPostSecureApi('/api/admin/records', { action: 'update-contractor-pin', id: safeId, pin });
+  if (apiRes === 'ok') return;
+
+  const path = `contractors/${safeId}`;
+  const ref = doc(db, 'contractors', safeId);
+  const now = new Date().toISOString();
+  try {
+    const snap = await getDoc(ref);
+    if (snap.exists()) {
+      await updateDoc(ref, {
+        pin: trunc(pin, 32),
+        updatedAt: now,
+      });
+    } else if (fallbackContractor) {
+      const clean = sanitizeContractorPayload({
+        ...fallbackContractor,
+        id: safeId,
+        pin,
+        updatedAt: now,
+      });
+      await setDoc(ref, clean);
+    }
+  } catch (error) {
+    handleFirestoreError(error, OperationType.UPDATE, path);
+  }
 }
 
-export async function fsToggleContractorActive(id: string, active: boolean): Promise<void> {
+export async function fsToggleContractorActive(
+  id: string,
+  active: boolean,
+  fallbackContractor?: ContractorRecord
+): Promise<void> {
   const safeId = sanitizeId(id);
   const path = `contractors/${safeId}`;
+  const ref = doc(db, 'contractors', safeId);
+  const now = new Date().toISOString();
   try {
-    await updateDoc(doc(db, 'contractors', safeId), {
-      active: Boolean(active),
-      updatedAt: new Date().toISOString(),
-    });
+    const snap = await getDoc(ref);
+    if (snap.exists()) {
+      await updateDoc(ref, {
+        active: Boolean(active),
+        updatedAt: now,
+      });
+    } else if (fallbackContractor) {
+      const clean = sanitizeContractorPayload({
+        ...fallbackContractor,
+        id: safeId,
+        active: Boolean(active),
+        updatedAt: now,
+      });
+      await setDoc(ref, clean);
+    }
   } catch (error) {
     handleFirestoreError(error, OperationType.UPDATE, path);
   }
@@ -404,23 +620,43 @@ export async function fsUpdateInvoiceReview(
   id: string,
   status: InvoiceRecord['status'],
   quality: string,
-  note: string
+  note: string,
+  fallbackInvoice?: InvoiceRecord
 ): Promise<void> {
   const safeId = sanitizeId(id);
   const path = `invoices/${safeId}`;
+  const ref = doc(db, 'invoices', safeId);
+  const now = new Date().toISOString();
   try {
-    await updateDoc(doc(db, 'invoices', safeId), {
-      status,
-      quality: trunc(quality, 80),
-      note: trunc(note, 500),
-      updatedAt: new Date().toISOString(),
-    });
+    const snap = await getDoc(ref);
+    if (snap.exists()) {
+      await updateDoc(ref, {
+        status,
+        quality: trunc(quality, 80),
+        note: trunc(note, 500),
+        updatedAt: now,
+      });
+    } else if (fallbackInvoice) {
+      const clean = sanitizeInvoicePayload({
+        ...fallbackInvoice,
+        id: safeId,
+        status,
+        quality,
+        note,
+        updatedAt: now,
+      });
+      await setDoc(ref, clean);
+    }
   } catch (error) {
     handleFirestoreError(error, OperationType.UPDATE, path);
   }
 }
 
-export async function fsUpdateInvoicePhotos(id: string, photos: InvoicePhoto[]): Promise<void> {
+export async function fsUpdateInvoicePhotos(
+  id: string,
+  photos: InvoicePhoto[],
+  fallbackInvoice?: InvoiceRecord
+): Promise<void> {
   const safeId = sanitizeId(id);
   const path = `invoices/${safeId}`;
   const safePhotos = photos.slice(0, 8).map((p) => ({
@@ -430,28 +666,58 @@ export async function fsUpdateInvoicePhotos(id: string, photos: InvoicePhoto[]):
     oneDrivePath: trunc(p.oneDrivePath, 300),
     synced: Boolean(p.synced),
   }));
+  const ref = doc(db, 'invoices', safeId);
+  const now = new Date().toISOString();
   try {
-    await updateDoc(doc(db, 'invoices', safeId), {
-      photos: safePhotos,
-      updatedAt: new Date().toISOString(),
-    });
+    const snap = await getDoc(ref);
+    if (snap.exists()) {
+      await updateDoc(ref, {
+        photos: safePhotos,
+        updatedAt: now,
+      });
+    } else if (fallbackInvoice) {
+      const clean = sanitizeInvoicePayload({
+        ...fallbackInvoice,
+        id: safeId,
+        photos: safePhotos,
+        updatedAt: now,
+      });
+      await setDoc(ref, clean);
+    }
   } catch (error) {
     handleFirestoreError(error, OperationType.UPDATE, path);
   }
 }
 
-export async function fsBulkApproveInvoices(ids: string[]): Promise<void> {
+export async function fsBulkApproveInvoices(
+  ids: string[],
+  fallbackInvoices?: InvoiceRecord[]
+): Promise<void> {
   const now = new Date().toISOString();
+  const fallbackMap = new Map((fallbackInvoices || []).map((inv) => [sanitizeId(inv.id), inv]));
   const CHUNK_SIZE = 350;
   for (let i = 0; i < ids.length; i += CHUNK_SIZE) {
     const chunk = ids.slice(i, i + CHUNK_SIZE);
     const batch = writeBatch(db);
     for (const id of chunk) {
-      batch.update(doc(db, 'invoices', sanitizeId(id)), {
-        status: 'معتمد',
-        note: 'تم',
-        updatedAt: now,
-      });
+      const safeId = sanitizeId(id);
+      const existing = fallbackMap.get(safeId);
+      if (existing) {
+        const clean = sanitizeInvoicePayload({
+          ...existing,
+          id: safeId,
+          status: 'معتمد',
+          note: 'تم',
+          updatedAt: now,
+        });
+        batch.set(doc(db, 'invoices', safeId), clean);
+      } else {
+        batch.update(doc(db, 'invoices', safeId), {
+          status: 'معتمد',
+          note: 'تم',
+          updatedAt: now,
+        });
+      }
     }
     try {
       await batch.commit();

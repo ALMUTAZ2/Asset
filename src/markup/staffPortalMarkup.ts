@@ -181,8 +181,8 @@ export const STAFF_VIEW_MARKUP = `
                 توزيع أنواع الأعمال
               </h3>
               <div class="max-w-md mx-auto">
-                <div class="h-48 w-48 relative mx-auto flex items-center justify-center">
-                  <canvas id="chartWorkTypes" class="w-full h-full block"></canvas>
+                <div class="h-48 relative flex items-center justify-center">
+                  <canvas id="chartWorkTypes"></canvas>
                   <div class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
                     <span class="text-[11px] font-bold text-slate-400">الإجمالي</span>
                     <span id="workTypesTotalCenter" class="text-2xl font-black text-se-dark-blue">0</span>
@@ -200,7 +200,7 @@ export const STAFF_VIEW_MARKUP = `
                   عدد الفواتير حسب المقاول وحالة الاعتماد
                 </h3>
               </div>
-              <div class="h-80 w-full relative"><canvas id="chartContractors" class="w-full h-full block"></canvas></div>
+              <div class="h-80 relative"><canvas id="chartContractors"></canvas></div>
             </div>
 
             <!-- Charts Row 2 -->
@@ -210,14 +210,14 @@ export const STAFF_VIEW_MARKUP = `
                   <i data-lucide="map-pin" class="w-4 h-4 text-se-mid-blue"></i>
                   توزيع الفواتير حسب المكاتب
                 </h3>
-                <div class="h-64 w-full relative"><canvas id="chartOffices" class="w-full h-full block"></canvas></div>
+                <div class="h-64 relative"><canvas id="chartOffices"></canvas></div>
               </div>
               <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
                 <h3 class="text-sm font-extrabold text-se-dark-blue mb-3 flex items-center gap-2">
                   <i data-lucide="wrench" class="w-4 h-4 text-se-mid-blue"></i>
                   أكثر أوصاف الأعمال تكراراً
                 </h3>
-                <div class="h-64 w-full relative"><canvas id="chartWorkDescs" class="w-full h-full block"></canvas></div>
+                <div class="h-64 relative"><canvas id="chartWorkDescs"></canvas></div>
               </div>
             </div>
 
@@ -231,7 +231,7 @@ export const STAFF_VIEW_MARKUP = `
                   </h3>
                   <span class="text-[11px] font-bold text-slate-400">حسب تكرار الملاحظة</span>
                 </div>
-                <div class="h-64 w-full relative"><canvas id="chartTopDelayNotes" class="w-full h-full block"></canvas></div>
+                <div class="h-64 relative"><canvas id="chartTopDelayNotes"></canvas></div>
               </div>
 
               <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
@@ -242,7 +242,7 @@ export const STAFF_VIEW_MARKUP = `
                   </h3>
                   <span class="text-[11px] font-bold text-slate-400">أكثر 5 مقاولين عليهم ملاحظات</span>
                 </div>
-                <div class="h-72 w-full relative"><canvas id="chartDelayByContractor" class="w-full h-full block"></canvas></div>
+                <div class="h-72 relative"><canvas id="chartDelayByContractor"></canvas></div>
               </div>
             </div>
           </div>

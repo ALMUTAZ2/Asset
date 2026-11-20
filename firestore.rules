@@ -9,6 +9,10 @@ service cloud.firestore {
       return value is string && value.size() >= minLength && value.size() <= maxLength;
     }
 
+    function isNumber(value) {
+      return value is int || value is float;
+    }
+
     function staffPath() {
       return /databases/$(database)/documents/staff_users/$(request.auth.token.username);
     }
@@ -49,21 +53,27 @@ service cloud.firestore {
 
     function isValidStaffUser(data) {
       return data.keys().hasAll(['id', 'name', 'username', 'role', 'updatedAt'])
-        && data.keys().hasOnly(['id', 'name', 'username', 'role', 'updatedAt'])
+        && data.keys().hasOnly(['id', 'name', 'username', 'role', 'updatedAt', 'password', 'passwordHash', 'pin', 'createdAt'])
         && isValidId(data.id)
         && isValidString(data.name, 1, 120)
         && isValidId(data.username)
         && data.username.size() <= 64
         && data.role in ['admin', 'reviewer', 'viewer']
+        && (!('password' in data) || isValidString(data.password, 4, 128))
+        && (!('passwordHash' in data) || isValidString(data.passwordHash, 0, 256))
+        && (!('pin' in data) || isValidString(data.pin, 0, 32))
+        && (!('createdAt' in data) || isValidString(data.createdAt, 0, 64))
         && isValidString(data.updatedAt, 1, 64);
     }
 
     function isValidContractor(data) {
       return data.keys().hasAll(['id', 'name', 'active', 'updatedAt'])
-        && data.keys().hasOnly(['id', 'name', 'active', 'updatedAt'])
+        && data.keys().hasOnly(['id', 'name', 'active', 'updatedAt', 'pin', 'createdAt'])
         && isValidId(data.id)
         && isValidString(data.name, 1, 150)
         && data.active is bool
+        && (!('pin' in data) || isValidString(data.pin, 4, 32))
+        && (!('createdAt' in data) || isValidString(data.createdAt, 0, 64))
         && isValidString(data.updatedAt, 1, 64);
     }
 
@@ -85,7 +95,7 @@ service cloud.firestore {
           'deliveryDate', 'note', 'status', 'quality', 'checklist', 'photos', 'updatedAt'
         ])
         && isValidId(data.id)
-        && data.seq is number && data.seq >= 0 && data.seq <= 10000000
+        && isNumber(data.seq) && data.seq >= 0 && data.seq <= 10000000
         && isValidString(data.wo, 1, 80)
         && isValidString(data.contractor, 1, 150)
         && isValidString(data.consultant, 0, 100)
@@ -112,7 +122,7 @@ service cloud.firestore {
         && isValidString(data.user, 1, 160)
         && isValidString(data.action, 1, 120)
         && isValidString(data.details, 0, 500)
-        && data.createdAtMs is number;
+        && isNumber(data.createdAtMs);
     }
 
     function isValidOneDriveSettings(data) {
@@ -126,7 +136,8 @@ service cloud.firestore {
     }
 
     match /staff_users/{username} {
-      allow get, list: if request.query.limit <= 500;
+      allow get: if isValidId(username);
+      allow list: if request.query.limit <= 500;
       allow create: if isValidId(username)
         && isValidStaffUser(request.resource.data)
         && request.resource.data.username == username;
@@ -134,20 +145,21 @@ service cloud.firestore {
         && isValidStaffUser(request.resource.data)
         && request.resource.data.id == resource.data.id
         && request.resource.data.username == resource.data.username
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'role', 'updatedAt'])
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'role', 'password', 'passwordHash', 'pin', 'updatedAt'])
         && (username != '100889' || request.resource.data.role == 'admin');
       allow delete: if isValidId(username) && username != '100889';
     }
 
     match /contractors/{contractorId} {
-      allow get, list: if request.query.limit <= 500;
+      allow get: if isValidId(contractorId);
+      allow list: if request.query.limit <= 500;
       allow create: if isValidId(contractorId)
         && isValidContractor(request.resource.data)
         && request.resource.data.id == contractorId;
       allow update: if isValidId(contractorId)
         && isValidContractor(request.resource.data)
         && request.resource.data.id == resource.data.id
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'active', 'updatedAt']);
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'active', 'pin', 'updatedAt']);
       allow delete: if isValidId(contractorId);
     }
 
@@ -165,7 +177,8 @@ service cloud.firestore {
     }
 
     match /audit_logs/{logId} {
-      allow get, list: if request.query.limit <= 200;
+      allow get: if isValidId(logId);
+      allow list: if request.query.limit <= 200;
       allow create: if isValidId(logId)
         && isValidAuditLog(request.resource.data)
         && request.resource.data.id == logId;
