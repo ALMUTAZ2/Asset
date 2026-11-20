@@ -216,12 +216,12 @@ export const MODALS_MARKUP = `
         </div>
         <div>
           <label class="block font-extrabold text-se-dark-blue mb-1">كلمة المرور الجديدة *</label>
-          <input type="password" id="rp_newPass" required minlength="10" autocomplete="new-password" placeholder="10 خانات على الأقل"
+          <input type="password" id="rp_newPass" required minlength="4" autocomplete="new-password" placeholder="4 خانات على الأقل"
             class="w-full rounded-xl border border-slate-300 bg-slate-50 py-2.5 px-3 font-mono outline-none text-left" dir="ltr" />
         </div>
         <div>
           <label class="block font-extrabold text-se-dark-blue mb-1">تأكيد كلمة المرور الجديدة *</label>
-          <input type="password" id="rp_confirmPass" required minlength="10" autocomplete="new-password" placeholder="أعد كتابة كلمة المرور الجديدة"
+          <input type="password" id="rp_confirmPass" required minlength="4" autocomplete="new-password" placeholder="أعد كتابة كلمة المرور الجديدة"
             class="w-full rounded-xl border border-slate-300 bg-slate-50 py-2.5 px-3 font-mono outline-none text-left" dir="ltr" />
         </div>
         <div id="rp_error" class="hidden p-2.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 font-bold"></div>

@@ -35,6 +35,7 @@ function applyChartTheme() {
   }
   Object.values(Chart.instances).forEach((c: any) => {
     try {
+      if (!c.canvas || !c.canvas.isConnected || c.canvas.offsetParent === null) return;
       Object.values(c.options.scales || {}).forEach((s: any) => {
         if (s.ticks) s.ticks.color = ink;
         if (s.grid) s.grid.color = grid;
@@ -169,7 +170,7 @@ export function initPremiumUX(): () => void {
       if (m.type === 'attributes' && m.attributeName === 'class') {
         const old = m.oldValue || '';
         if (old.split(/\s+/).includes('hidden') && !t.classList.contains('hidden')
-            && (/^(sec_|.*View$)/.test(t.id))) playEnter(t);
+            && (/^(sec_(?!dashboard)|.*View$)/.test(t.id))) playEnter(t);
       } else if (m.type === 'childList' && m.addedNodes.length) {
         pending.add(t);
       } else if (m.type === 'characterData' && t.parentElement) {

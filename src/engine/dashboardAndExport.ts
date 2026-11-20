@@ -173,6 +173,22 @@ export function createDashboardAndExportController(ctx: DashboardExportContext) 
     }
   }
 
+  function getFreshCanvas(id: string, chartKey: string): HTMLCanvasElement | null {
+    destroyChart(chartKey);
+    const oldCanvas = document.getElementById(id) as HTMLCanvasElement | null;
+    if (!oldCanvas) return null;
+    const parent = oldCanvas.parentElement;
+    if (!parent) return oldCanvas;
+    const newCanvas = document.createElement('canvas');
+    newCanvas.id = id;
+    newCanvas.className = oldCanvas.className || 'w-full h-full block';
+    newCanvas.style.display = 'block';
+    newCanvas.style.width = '100%';
+    newCanvas.style.height = '100%';
+    parent.replaceChild(newCanvas, oldCanvas);
+    return newCanvas;
+  }
+
   function destroyAllCharts(): void {
     Object.keys(charts).forEach((k) => destroyChart(k));
   }
@@ -413,8 +429,7 @@ export function createDashboardAndExportController(ctx: DashboardExportContext) 
     });
     const cEntries = Object.entries(cMap).sort((a, b) => a[1].total - b[1].total);
     const maxContractorTotal = cEntries.length ? cEntries[cEntries.length - 1][1].total : 1;
-    destroyChart('contractors');
-    const cCanvas = document.getElementById('chartContractors') as HTMLCanvasElement | null;
+    const cCanvas = getFreshCanvas('chartContractors', 'contractors');
     if (cCanvas) {
       charts.contractors = new Chart(cCanvas, {
         type: 'bar',
@@ -522,8 +537,7 @@ export function createDashboardAndExportController(ctx: DashboardExportContext) 
       }).join('');
     }
 
-    destroyChart('workTypes');
-    const wtCanvas = document.getElementById('chartWorkTypes') as HTMLCanvasElement | null;
+    const wtCanvas = getFreshCanvas('chartWorkTypes', 'workTypes');
     if (wtCanvas) {
       charts.workTypes = new Chart(wtCanvas, {
         type: 'doughnut',
@@ -568,8 +582,7 @@ export function createDashboardAndExportController(ctx: DashboardExportContext) 
       if (i.office) offMap[i.office] = (offMap[i.office] || 0) + 1;
     });
     const offEntries = Object.entries(offMap).sort((a, b) => b[1] - a[1]);
-    destroyChart('offices');
-    const offCanvas = document.getElementById('chartOffices') as HTMLCanvasElement | null;
+    const offCanvas = getFreshCanvas('chartOffices', 'offices');
     if (offCanvas) {
       charts.offices = new Chart(offCanvas, {
         type: 'bar',
@@ -625,8 +638,7 @@ export function createDashboardAndExportController(ctx: DashboardExportContext) 
     const dEntries = Object.entries(dMap)
       .sort((a, b) => b[1] - a[1])
       .slice(0, 8);
-    destroyChart('workDescs');
-    const wdCanvas = document.getElementById('chartWorkDescs') as HTMLCanvasElement | null;
+    const wdCanvas = getFreshCanvas('chartWorkDescs', 'workDescs');
     if (wdCanvas) {
       charts.workDescs = new Chart(wdCanvas, {
         type: 'bar',
@@ -665,8 +677,7 @@ export function createDashboardAndExportController(ctx: DashboardExportContext) 
     const noteColors = isDark
       ? ['#f43f5e', '#fb7185', '#fb923c', '#facc15', '#38bdf8']
       : ['#e11d48', '#f43f5e', '#fb7185', '#f97316', '#f59e0b'];
-    destroyChart('topDelayNotes');
-    const dnCanvas = document.getElementById('chartTopDelayNotes') as HTMLCanvasElement | null;
+    const dnCanvas = getFreshCanvas('chartTopDelayNotes', 'topDelayNotes');
     if (dnCanvas) {
       charts.topDelayNotes = new Chart(dnCanvas, {
         type: 'bar',
@@ -701,9 +712,8 @@ export function createDashboardAndExportController(ctx: DashboardExportContext) 
     }
 
     // 6. Top 5 Contractors with Most Blocking/Delay Notes
-    destroyChart('delayByContractor');
     const shortTxt = (s: string, max = 26) => (s && s.length > max ? s.slice(0, max) + '…' : s);
-    const dbcCanvas = document.getElementById('chartDelayByContractor') as HTMLCanvasElement | null;
+    const dbcCanvas = getFreshCanvas('chartDelayByContractor', 'delayByContractor');
     if (dbcCanvas) {
       charts.delayByContractor = new Chart(dbcCanvas, {
         type: 'bar',
@@ -754,6 +764,10 @@ export function createDashboardAndExportController(ctx: DashboardExportContext) 
   }
 
   function renderDashboard(): void {
+    const sec = document.getElementById('sec_dashboard');
+    if (sec && (sec.classList.contains('hidden') || sec.offsetParent === null)) {
+      return;
+    }
     const data = getFilteredDashboardInvoices();
     const filterInfo = getActiveDashFilterInfo();
     const hintEl = document.getElementById('dashActiveFilterHint');
@@ -1478,9 +1492,11 @@ export function createDashboardAndExportController(ctx: DashboardExportContext) 
   window.addEventListener('se-theme-changed', () => {
     try {
       const sec = document.getElementById('sec_dashboard');
-      const isDashVisible = sec && !sec.classList.contains('hidden');
+      const isDashVisible = sec && !sec.classList.contains('hidden') && sec.offsetParent !== null;
       if (isDashVisible && ctx.getInvoices().length > 0) {
-        renderDashboard();
+        requestAnimationFrame(() => {
+          renderDashboard();
+        });
       }
     } catch {
       /* ignore */

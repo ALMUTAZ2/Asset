@@ -1206,7 +1206,13 @@ export function initPlatformEngine(onFatalError?: (err: Error) => void): () => v
     });
     toggleMobileSidebar(false);
 
-    if (sec === 'dashboard') dashCtrl.renderDashboard();
+    if (sec === 'dashboard') {
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          dashCtrl.renderDashboard();
+        });
+      });
+    }
     if (sec === 'invoices') {
       refreshDynamicMonthSelect();
       renderStaffInvoicesTable();
@@ -1758,10 +1764,15 @@ export function initPlatformEngine(onFatalError?: (err: Error) => void): () => v
       title: 'تعديل الرقم السري للمقاول',
       message: `أدخل الرقم السري (PIN) الجديد لحساب: ${c.name}`,
       withInput: true,
-      placeholder: 'أدخل PIN جديداً من 4-8 أرقام',
+      placeholder: 'أدخل PIN جديداً (4 أرقام على الأقل)',
       onConfirm: async (newPin) => {
         if (!newPin) return;
-        c.pin = newPin;
+        const cleanPin = newPin.trim();
+        if (cleanPin.length < 4) {
+          showToast('الرقم السري (PIN) يجب ألا يقل عن 4 أرقام', 'warning');
+          return;
+        }
+        c.pin = cleanPin;
         renderUsersManagement();
         try {
           await fsUpdateContractorPin(c.id, newPin);
@@ -1801,7 +1812,7 @@ export function initPlatformEngine(onFatalError?: (err: Error) => void): () => v
         }
         const pinBytes = new Uint32Array(1);
         crypto.getRandomValues(pinBytes);
-        const initialPin = String(pinBytes[0] % 100000000).padStart(8, '0');
+        const initialPin = String(1000 + (pinBytes[0] % 9000));
         const newCtr: ContractorRecord = {
           id: `ctr_${Date.now()}`,
           name,
