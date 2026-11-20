@@ -30,8 +30,8 @@ export default async function handler(req: Request, res: Response): Promise<void
     const body = req.body as Record<string, unknown> | undefined;
     const currentPassword = String(body?.currentPassword || '');
     const newPassword = String(body?.newPassword || '');
-    if (newPassword.length < 4 || newPassword.length > 128) {
-      res.status(400).json({ error: 'يجب أن تتكون كلمة المرور الجديدة من 4 خانات على الأقل.' });
+    if (newPassword.length < 10 || newPassword.length > 128) {
+      res.status(400).json({ error: 'يجب أن تتكون كلمة المرور الجديدة من 10 خانات على الأقل.' });
       return;
     }
 

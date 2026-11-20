@@ -31,6 +31,7 @@ export interface ContractorRecord {
   id: string;
   name: string;
   active: boolean;
+  pin?: string;
   updatedAt: string;
 }
 
@@ -191,7 +192,7 @@ export function sanitizeOneDriveSettings(s: OneDriveCloudSettings): {
   return {
     clientId: trunc(s.clientId, 128),
     tenantId: trunc(tenantVal, 128),
-    baseFolder: trunc(s.baseFolder || '/Apps/Invoice Tracker – Asset Receiving', 200),
+    baseFolder: trunc(s.baseFolder || '/Apps/Invoice Tracker – Asset Receiving', 128),
     connectedUser: trunc(s.connectedUser, 150),
     updatedAt: trunc(s.updatedAt || new Date().toISOString(), 64),
   };
@@ -238,6 +239,7 @@ export interface SessionInfo {
   type: 'staff' | 'contractor';
   name: string;
   username?: string;
+  contractorId?: string;
   role: string;
 }
 
@@ -312,7 +314,12 @@ export function subscribeAllCollections(cbs: SubscriptionCallbacks, session: Ses
     )
   );
 
-  if (session.type === 'staff' && session.role === 'admin') {
+  const hasFirebaseAdminAuth = Boolean(
+    auth.currentUser &&
+      session.username &&
+      auth.currentUser.uid === `staff_${session.username}`
+  );
+  if (session.type === 'staff' && session.role === 'admin' && hasFirebaseAdminAuth) {
     unsubs.push(
       onSnapshot(
         doc(db, 'app_settings', 'onedrive'),
@@ -503,20 +510,25 @@ export async function fsAddAuditLog(log: AuditLogRecord): Promise<void> {
   }
 }
 
-export async function fsSaveOneDriveSettings(settings: DropboxCloudSettings): Promise<void> {
+export async function fsSaveOneDriveSettings(settings: DropboxCloudSettings): Promise<boolean> {
+  if (!auth.currentUser) {
+    return false;
+  }
   const clean = sanitizeOneDriveSettings(settings);
   const path = 'app_settings/onedrive';
   try {
     await setDoc(doc(db, 'app_settings', 'onedrive'), clean);
+    return true;
   } catch (error) {
     handleFirestoreError(error, OperationType.WRITE, path);
   }
 }
 
 export async function fsLoadDropboxSettings(): Promise<DropboxCloudSettings | null> {
+  if (!auth.currentUser) return null;
   try {
     const snap = await getDoc(doc(db, 'app_settings', 'onedrive'));
     if (!snap.exists()) return null;
-    return snap.data() as DropboxCloudSettings;
+    return parseDropboxFromFirestore(snap.data());
   } catch { return null; }
 }

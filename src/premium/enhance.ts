@@ -23,7 +23,10 @@ function applyChartTheme() {
   Chart.defaults.color = ink;
   Chart.defaults.borderColor = grid;
   Chart.defaults.font.family = "'IBM Plex Sans Arabic','Cairo',sans-serif";
-  Chart.defaults.animation = reduced() ? false : { duration: 900, easing: 'easeOutQuart' };
+  if (Chart.defaults.animation && typeof Chart.defaults.animation === 'object') {
+    Chart.defaults.animation.duration = reduced() ? 0 : 900;
+    Chart.defaults.animation.easing = 'easeOutQuart';
+  }
   if (Chart.defaults.plugins?.tooltip) {
     Object.assign(Chart.defaults.plugins.tooltip, {
       backgroundColor: dark ? 'rgba(13,24,48,.95)' : 'rgba(0,24,58,.92)',
@@ -32,7 +35,6 @@ function applyChartTheme() {
   }
   Object.values(Chart.instances).forEach((c: any) => {
     try {
-      if (!c.canvas || !c.canvas.isConnected || c.canvas.offsetParent === null) return;
       Object.values(c.options.scales || {}).forEach((s: any) => {
         if (s.ticks) s.ticks.color = ink;
         if (s.grid) s.grid.color = grid;
@@ -167,7 +169,7 @@ export function initPremiumUX(): () => void {
       if (m.type === 'attributes' && m.attributeName === 'class') {
         const old = m.oldValue || '';
         if (old.split(/\s+/).includes('hidden') && !t.classList.contains('hidden')
-            && (/^(sec_(?!dashboard)|.*View$)/.test(t.id))) playEnter(t);
+            && (/^(sec_|.*View$)/.test(t.id))) playEnter(t);
       } else if (m.type === 'childList' && m.addedNodes.length) {
         pending.add(t);
       } else if (m.type === 'characterData' && t.parentElement) {

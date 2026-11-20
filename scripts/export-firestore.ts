@@ -11,7 +11,14 @@ const sa = {
   client_email: 'firebase-adminsdk-fbsvc@gen-lang-client-0851514818.iam.gserviceaccount.com'
 };
 
-const app = initializeApp({ credential: cert(sa), projectId: sa.project_id });
+const app = initializeApp({
+  credential: cert({
+    projectId: sa.project_id,
+    clientEmail: sa.client_email,
+    privateKey: sa.private_key,
+  }),
+  projectId: sa.project_id,
+});
 const dbId = 'ai-studio-remixuntitled-22ca139d-67d4-4938-b78a-773e2e06c8f0';
 const db = getFirestore(app, dbId);
 

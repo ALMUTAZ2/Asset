@@ -501,8 +501,8 @@ export function initPlatformEngine(onFatalError?: (err: Error) => void): () => v
       showErr('سجّل الدخول إلى حساب الموظف لتغيير كلمة المرور.');
       return;
     }
-    if (newPass.length < 4) {
-      showErr('يجب أن تتكون كلمة المرور الجديدة من 4 خانات على الأقل.');
+    if (newPass.length < 10) {
+      showErr('يجب أن تتكون كلمة المرور الجديدة من 10 خانات على الأقل.');
       return;
     }
     if (newPass !== confirmPass) {
@@ -1206,11 +1206,7 @@ export function initPlatformEngine(onFatalError?: (err: Error) => void): () => v
     });
     toggleMobileSidebar(false);
 
-    if (sec === 'dashboard') {
-      requestAnimationFrame(() => {
-        dashCtrl.renderDashboard();
-      });
-    }
+    if (sec === 'dashboard') dashCtrl.renderDashboard();
     if (sec === 'invoices') {
       refreshDynamicMonthSelect();
       renderStaffInvoicesTable();
@@ -1762,18 +1758,13 @@ export function initPlatformEngine(onFatalError?: (err: Error) => void): () => v
       title: 'تعديل الرقم السري للمقاول',
       message: `أدخل الرقم السري (PIN) الجديد لحساب: ${c.name}`,
       withInput: true,
-      placeholder: 'أدخل PIN جديداً (4 أرقام على الأقل)',
+      placeholder: 'أدخل PIN جديداً من 4-8 أرقام',
       onConfirm: async (newPin) => {
         if (!newPin) return;
-        const cleanPin = newPin.trim();
-        if (!/^\d{4,12}$/.test(cleanPin)) {
-          showToast('الرقم السري يجب أن يتكون من 4 أرقام على الأقل', 'warning');
-          return;
-        }
-        c.pin = cleanPin;
+        c.pin = newPin;
         renderUsersManagement();
         try {
-          await fsUpdateContractorPin(c.id, cleanPin);
+          await fsUpdateContractorPin(c.id, newPin);
           logAudit('تعديل PIN مقاول', `تم تحديث الرقم السري للمقاول: ${c.name}`);
           showToast(`تم تحديث الرقم السري لـ ${c.name} بنجاح`, 'success');
         } catch {
@@ -1799,7 +1790,7 @@ export function initPlatformEngine(onFatalError?: (err: Error) => void): () => v
   function addNewContractorPrompt(): void {
     openConfirmModal({
       title: 'إضافة مقاول جديد للمنصة',
-      message: 'أدخل اسم الشركة أو المؤسسة. سيتم إنشاء PIN مكون من 4 أرقام ويمكنك إظهاره أو تعديله في أي وقت.',
+      message: 'أدخل اسم الشركة أو المؤسسة. سيتم إنشاء PIN عشوائي قوي وعرضه مرة واحدة بعد الحفظ.',
       withInput: true,
       placeholder: 'مثال: شركة النور للمقاولات الكهربائية',
       onConfirm: async (name) => {
@@ -1810,7 +1801,7 @@ export function initPlatformEngine(onFatalError?: (err: Error) => void): () => v
         }
         const pinBytes = new Uint32Array(1);
         crypto.getRandomValues(pinBytes);
-        const initialPin = String(1000 + (pinBytes[0] % 9000));
+        const initialPin = String(pinBytes[0] % 100000000).padStart(8, '0');
         const newCtr: ContractorRecord = {
           id: `ctr_${Date.now()}`,
           name,
@@ -1848,8 +1839,8 @@ export function initPlatformEngine(onFatalError?: (err: Error) => void): () => v
     const role = ($<HTMLSelectElement>('newStaffRole')?.value || 'reviewer') as StaffRole;
 
     if (!name || !username || !password) return;
-    if (password.length < 4) {
-      showToast('كلمة المرور يجب أن تتكون من 4 خانات على الأقل.', 'warning');
+    if (password.length < 10) {
+      showToast('كلمة المرور يجب أن تتكون من 10 خانات على الأقل.', 'warning');
       return;
     }
     if (appState.staffUsers.some((u) => u.username.toLowerCase() === username.toLowerCase())) {
@@ -2140,7 +2131,7 @@ export function initPlatformEngine(onFatalError?: (err: Error) => void): () => v
     setLocalDropboxToken(appState.dropbox.accessToken);
 
     try {
-      await fsSaveOneDriveSettings({
+      const savedToFirebase = await fsSaveOneDriveSettings({
         clientId: appState.dropbox.clientId,
         appSecret: appState.dropbox.appSecret,
         refreshToken: appState.dropbox.refreshToken,
@@ -2158,7 +2149,12 @@ export function initPlatformEngine(onFatalError?: (err: Error) => void): () => v
       }
 
       renderDropboxModule();
-      showToast('تم حفظ إعدادات Dropbox في قاعدة بيانات Firebase بنجاح ✓', 'success');
+      showToast(
+        savedToFirebase
+          ? 'تم حفظ إعدادات Dropbox في قاعدة بيانات Firebase بنجاح ✓'
+          : 'تم حفظ إعدادات Dropbox محلياً للجلسة الحالية ✓',
+        'success'
+      );
       logAudit('حفظ إعدادات Dropbox', `تم تحديث المجلد: ${appState.dropbox.baseFolder}`);
     } catch {
       showToast('تعذر حفظ إعدادات Dropbox في Firebase', 'error');
@@ -2799,6 +2795,10 @@ export function initPlatformEngine(onFatalError?: (err: Error) => void): () => v
   document.addEventListener('click', handleDocClick);
 
   function startSessionSubscriptions(session: SessionInfo): void {
+    if (unsubFirestore) {
+      unsubFirestore();
+      unsubFirestore = null;
+    }
     unsubFirestore = subscribeAllCollections({
       onStaff: (staff) => {
         appState.staffUsers = staff.length > 0 ? staff : (appState.staffUsers.length > 0 ? appState.staffUsers : buildSeedStaffUsers());
@@ -2905,10 +2905,11 @@ export function initPlatformEngine(onFatalError?: (err: Error) => void): () => v
         await signOut(auth);
         return;
       }
-      if (!response.ok || !result.session) {
+      let resolvedSession: SessionInfo | undefined = result.session;
+      if (!response.ok || !resolvedSession) {
         const claims = (await user.getIdTokenResult()).claims;
         if (claims.type && claims.name) {
-          result.session = {
+          resolvedSession = {
             type: claims.type as 'staff' | 'contractor',
             name: String(claims.name),
             username: claims.username as string | undefined,
@@ -2920,26 +2921,26 @@ export function initPlatformEngine(onFatalError?: (err: Error) => void): () => v
         }
       }
 
-      currentSession = result.session;
+      currentSession = resolvedSession;
       if (appState.invoices.length === 0) appState.invoices = buildSeedInvoices();
       if (appState.contractors.length === 0) appState.contractors = buildSeedContractors();
       if (appState.staffUsers.length === 0) appState.staffUsers = buildSeedStaffUsers();
       if (appState.auditLog.length === 0) appState.auditLog = buildSeedAuditLogs();
       appState.dropbox = {
         ...dropboxConfig,
-        accessToken: result.session.type === 'staff' && result.session.role === 'admin' ? getLocalDropboxToken() : '',
+        accessToken: resolvedSession.type === 'staff' && resolvedSession.role === 'admin' ? getLocalDropboxToken() : '',
         appSecret: '',
         refreshToken: '',
       };
       $('loginView')?.classList.add('hidden');
-      if (result.session.type === 'contractor') {
+      if (resolvedSession.type === 'contractor') {
         $('staffView')?.classList.add('hidden');
         enterContractorPortal();
       } else {
         $('contractorView')?.classList.add('hidden');
         enterStaffPortal();
       }
-      startSessionSubscriptions(result.session);
+      startSessionSubscriptions(resolvedSession);
       refreshActiveView();
     } catch (error) {
       if (!destroyed) showToast(error instanceof Error ? error.message : 'تعذر استعادة الجلسة.', 'error');
