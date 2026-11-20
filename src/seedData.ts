@@ -1,4 +1,4 @@
-import type { InvoiceRecord } from './firestoreStore';
+import type { InvoiceRecord, ContractorRecord, StaffUser, AuditLogRecord } from './firestoreStore';
 
 export const DEFAULT_CONTRACTOR_NAMES = [
   'الشركة العالمية', 'مؤسسة كنان العربية', 'شركة ديار الوطن', 'شركة رابكوا', 'شركة هيف',
@@ -229,5 +229,70 @@ export function buildSeedInvoices(): InvoiceRecord[] {
       : [],
     updatedAt: nowIso,
   }));
+}
+
+export function buildSeedContractors(): ContractorRecord[] {
+  return [
+    { id: 'ctr_1', name: 'الشركة العالمية', pin: '1001', active: true, updatedAt: '2026-11-19T16:52:52.236Z' },
+    { id: 'ctr_2', name: 'مؤسسة كنان العربية', pin: '1002', active: true, updatedAt: '2026-11-19T16:52:52.236Z' },
+    { id: 'ctr_3', name: 'شركة ديار الوطن', pin: '1003', active: true, updatedAt: '2026-11-19T16:52:52.236Z' },
+    { id: 'ctr_4', name: 'شركة رابكوا', pin: '1004', active: true, updatedAt: '2026-11-19T16:52:52.236Z' },
+    { id: 'ctr_5', name: 'شركة هيف', pin: '1005', active: true, updatedAt: '2026-11-19T16:52:52.236Z' },
+    { id: 'ctr_6', name: 'شركة بن دلامة', pin: '1006', active: true, updatedAt: '2026-11-19T16:52:52.236Z' },
+    { id: 'ctr_7', name: 'مؤسسة سعيد عبدالله القحطاني', pin: '1007', active: true, updatedAt: '2026-11-19T16:52:52.236Z' },
+    { id: 'ctr_8', name: 'مؤسسة عباجة', pin: '1008', active: true, updatedAt: '2026-11-19T16:52:52.236Z' },
+    { id: 'ctr_9', name: 'شركة مستورة', pin: '1009', active: true, updatedAt: '2026-11-19T16:52:52.236Z' },
+    { id: 'ctr_10', name: 'شركة اسناد الطرق', pin: '1010', active: true, updatedAt: '2026-11-19T16:52:52.236Z' },
+    { id: 'ctr_11', name: 'شركة الجهاز', pin: '1011', active: true, updatedAt: '2026-11-19T16:52:52.236Z' },
+    { id: 'ctr_12', name: 'مؤسسة ركن الفايزية', pin: '1012', active: true, updatedAt: '2026-11-19T16:52:52.236Z' },
+    { id: 'ctr_13', name: 'مؤسسة قوى البنية', pin: '1013', active: true, updatedAt: '2026-11-19T16:52:52.236Z' },
+    { id: 'ctr_14', name: 'البحر المتوسط', pin: '1014', active: true, updatedAt: '2026-11-19T16:52:52.236Z' },
+    { id: 'ctr_15', name: 'شركة الجازع', pin: '1015', active: true, updatedAt: '2026-11-19T16:52:52.236Z' },
+    { id: 'ctr_16', name: 'شركة الجناحين', pin: '1016', active: true, updatedAt: '2026-11-19T16:52:52.236Z' },
+    { id: 'ctr_17', name: 'شركة الجوان المطوره', pin: '1017', active: true, updatedAt: '2026-11-19T16:52:52.236Z' },
+    { id: 'ctr_18', name: 'شركة الراجحي', pin: '1018', active: true, updatedAt: '2026-11-19T16:52:52.236Z' },
+    { id: 'ctr_19', name: 'شركة السبق العربي', pin: '1019', active: true, updatedAt: '2026-11-19T16:52:52.236Z' },
+    { id: 'ctr_20', name: 'شركة الطموح الجديد', pin: '1020', active: true, updatedAt: '2026-11-19T16:52:52.236Z' },
+    { id: 'ctr_21', name: 'شركة بكري الصعب', pin: '1021', active: true, updatedAt: '2026-11-19T16:52:52.236Z' },
+    { id: 'ctr_22', name: 'شركة دسر العربية', pin: '1022', active: true, updatedAt: '2026-11-19T16:52:52.236Z' },
+    { id: 'ctr_23', name: 'شركة ناصر الوبران', pin: '1023', active: true, updatedAt: '2026-11-19T16:52:52.236Z' },
+    { id: 'ctr_24', name: 'مؤسسة اعمار الجنوب', pin: '1024', active: true, updatedAt: '2026-11-19T16:52:52.236Z' },
+    { id: 'ctr_25', name: 'مؤسسة المدخلي', pin: '1025', active: true, updatedAt: '2026-11-19T16:52:52.236Z' },
+    { id: 'ctr_26', name: 'مؤسسة المنجوف', pin: '1026', active: true, updatedAt: '2026-11-19T16:52:52.236Z' },
+    { id: 'ctr_27', name: 'مؤسسة سليمان القسومي', pin: '1027', active: true, updatedAt: '2026-11-19T16:52:52.236Z' },
+    { id: 'ctr_28', name: 'مؤسسة أصالة الجزيرة', pin: '1028', active: true, updatedAt: '2026-11-19T16:52:52.236Z' },
+    { id: 'ctr_29', name: 'شركة العرض الانشائي', pin: '1029', active: true, updatedAt: '2026-11-19T16:52:52.236Z' },
+    { id: 'ctr_30', name: 'شركة الحمزي', pin: '1030', active: true, updatedAt: '2026-11-19T16:52:52.236Z' },
+    { id: 'ctr_31', name: 'مؤسسة ساند للاعمال', pin: '1031', active: true, updatedAt: '2026-11-19T16:52:52.236Z' },
+  ];
+}
+
+export function buildSeedStaffUsers(): StaffUser[] {
+  return [
+    { id: 'st_1', name: 'المعتز محمد ابوطالب', username: '100889', role: 'admin', updatedAt: '2026-11-19T21:42:24.852Z' },
+    { id: 'st_2', name: 'عماد احمد عقيلي', username: '78620', role: 'reviewer', updatedAt: '2026-11-19T16:52:52.236Z' },
+    { id: 'st_3', name: 'يوسف ال جحيف', username: '66288', role: 'reviewer', updatedAt: '2026-11-19T16:52:52.236Z' },
+    { id: 'st_4', name: 'عبدالعزيز حكمي', username: '114073', role: 'reviewer', updatedAt: '2026-11-19T16:52:52.236Z' },
+    { id: 'st_5', name: 'عبدالعزيز النعمي', username: '114084', role: 'reviewer', updatedAt: '2026-11-19T16:52:52.236Z' },
+    { id: 'st_6', name: 'إبراهيم حوذان', username: '110161', role: 'reviewer', updatedAt: '2026-11-19T16:52:52.236Z' },
+    { id: 'st_7', name: 'عبدالرحمن حمود آل عقيل', username: '1077825980', role: 'reviewer', updatedAt: '2026-11-19T16:52:52.236Z' },
+    { id: 'st_8', name: 'ريان احمد نمري', username: '1102794680', role: 'reviewer', updatedAt: '2026-11-19T16:52:52.236Z' },
+    { id: 'st_9', name: 'أحمد ماجد صائغ', username: '1093540407', role: 'reviewer', updatedAt: '2026-11-19T16:52:52.236Z' },
+    { id: 'st_10', name: 'خالد علي الحازمي', username: '1087282826', role: 'reviewer', updatedAt: '2026-11-19T16:52:52.236Z' },
+    { id: 'st_11', name: 'إبراهيم علي حكمي', username: '1101833679', role: 'reviewer', updatedAt: '2026-11-19T16:52:52.236Z' },
+    { id: 'st_12', name: 'خالد مجلي كريري', username: '1109735108', role: 'reviewer', updatedAt: '2026-11-19T16:52:52.236Z' },
+    { id: 'st_13', name: 'علي احمد الغريب', username: '1107106401', role: 'reviewer', updatedAt: '2026-11-19T16:52:52.236Z' },
+    { id: 'st_14', name: 'محمد احمد مسلماني', username: '1091959393', role: 'reviewer', updatedAt: '2026-11-19T16:52:52.236Z' },
+    { id: 'st_15', name: 'عبدالعزيز هاشم صيقل', username: '1079857098', role: 'reviewer', updatedAt: '2026-11-19T16:52:52.236Z' },
+  ];
+}
+
+export function buildSeedAuditLogs(): AuditLogRecord[] {
+  return [
+    { id: 'log_1', time: '٢٠‏/١١‏/٢٠٢٦، ١١:٥١ ص', user: 'المعتز محمد ابوطالب (admin)', action: 'تصدير Dashboard PDF', details: 'تصدير لوحة التحكم (كافة البيانات (بدون تصفية))', createdAtMs: 1795128129315 },
+    { id: 'log_2', time: '٢٠‏/١١‏/٢٠٢٦، ١١:٥٠ ص', user: 'المعتز محمد ابوطالب (100889)', action: 'تسجيل دخول', details: 'دخول موظف الشركة: المعتز محمد ابوطالب (100889)', createdAtMs: 1795117670070 },
+    { id: 'log_3', time: '١٩‏/١١‏/٢٠٢٦، ١٠:٤٥ م', user: 'المعتز محمد ابوطالب (admin)', action: 'تحديث الصلاحيات', details: 'مزامنة بيانات المستخدمين والمقاولين في قاعدة البيانات', createdAtMs: 1795117600000 },
+    { id: 'log_4', time: '١٩‏/١١‏/٢٠٢٦، ٠٨:٣٠ م', user: 'عماد احمد عقيلي (78620)', action: 'اعتماد فاتورة', details: 'اعتماد أمر العمل WO-422073943', createdAtMs: 1795117000000 },
+  ];
 }
 

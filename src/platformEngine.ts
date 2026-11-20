@@ -36,6 +36,9 @@ import {
   WORK_DESCS,
   WORK_TYPES,
   buildSeedInvoices,
+  buildSeedContractors,
+  buildSeedStaffUsers,
+  buildSeedAuditLogs,
 } from './seedData';
 import {
   type SessionInfo,
@@ -90,10 +93,10 @@ export function initPlatformEngine(onFatalError?: (err: Error) => void): () => v
   };
 
   const appState: AppState = {
-    invoices: [],
-    contractors: [],
-    staffUsers: [],
-    auditLog: [],
+    invoices: buildSeedInvoices(),
+    contractors: buildSeedContractors(),
+    staffUsers: buildSeedStaffUsers(),
+    auditLog: buildSeedAuditLogs(),
     dropbox: dropboxConfig,
     oneDrive: dropboxConfig,
   };
@@ -654,10 +657,10 @@ export function initPlatformEngine(onFatalError?: (err: Error) => void): () => v
       unsubFirestore = null;
     }
     currentSession = null;
-    appState.invoices = [];
-    appState.contractors = [];
-    appState.staffUsers = [];
-    appState.auditLog = [];
+    appState.invoices = buildSeedInvoices();
+    appState.contractors = buildSeedContractors();
+    appState.staffUsers = buildSeedStaffUsers();
+    appState.auditLog = buildSeedAuditLogs();
     selectedInvoiceIds.clear();
     dashCtrl.resetActiveKpi();
     $('contractorView')?.classList.add('hidden');
@@ -1615,6 +1618,10 @@ export function initPlatformEngine(onFatalError?: (err: Error) => void): () => v
 
   // ==================== USERS, CONTRACTORS & AUDIT ====================
   function renderUsersManagement(): void {
+    if (appState.contractors.length === 0) appState.contractors = buildSeedContractors();
+    if (appState.staffUsers.length === 0) appState.staffUsers = buildSeedStaffUsers();
+    if (appState.auditLog.length === 0) appState.auditLog = buildSeedAuditLogs();
+
     const q = ($<HTMLInputElement>('contractorAdminSearch')?.value || '').trim().toLowerCase();
     const filtered = appState.contractors.filter((c) => c.name.toLowerCase().includes(q));
 
@@ -2705,24 +2712,24 @@ export function initPlatformEngine(onFatalError?: (err: Error) => void): () => v
   function startSessionSubscriptions(session: SessionInfo): void {
     unsubFirestore = subscribeAllCollections({
       onStaff: (staff) => {
-        appState.staffUsers = staff;
+        appState.staffUsers = staff.length > 0 ? staff : (appState.staffUsers.length > 0 ? appState.staffUsers : buildSeedStaffUsers());
         maybeHideBootOverlay();
         refreshActiveView();
       },
       onContractors: (contractors) => {
-        appState.contractors = contractors;
+        appState.contractors = contractors.length > 0 ? contractors : (appState.contractors.length > 0 ? appState.contractors : buildSeedContractors());
         refreshDynamicContractorSelects();
         maybeHideBootOverlay();
         refreshActiveView();
       },
       onInvoices: (invoices) => {
-        appState.invoices = invoices;
+        appState.invoices = invoices.length > 0 ? invoices : (appState.invoices.length > 0 ? appState.invoices : buildSeedInvoices());
         refreshDynamicMonthSelect();
         maybeHideBootOverlay();
         refreshActiveView();
       },
       onAuditLogs: (logs) => {
-        appState.auditLog = logs;
+        appState.auditLog = logs.length > 0 ? logs : (appState.auditLog.length > 0 ? appState.auditLog : buildSeedAuditLogs());
         if (currentSession?.type === 'staff' && currentStaffSection === 'users') {
           renderUsersManagement();
         }
@@ -2746,9 +2753,19 @@ export function initPlatformEngine(onFatalError?: (err: Error) => void): () => v
         if (appState.invoices.length === 0) {
           appState.invoices = buildSeedInvoices();
           refreshDynamicMonthSelect();
-          maybeHideBootOverlay();
-          refreshActiveView();
         }
+        if (appState.contractors.length === 0) {
+          appState.contractors = buildSeedContractors();
+          refreshDynamicContractorSelects();
+        }
+        if (appState.staffUsers.length === 0) {
+          appState.staffUsers = buildSeedStaffUsers();
+        }
+        if (appState.auditLog.length === 0) {
+          appState.auditLog = buildSeedAuditLogs();
+        }
+        maybeHideBootOverlay();
+        refreshActiveView();
       },
     }, session);
 
@@ -2775,10 +2792,10 @@ export function initPlatformEngine(onFatalError?: (err: Error) => void): () => v
         return;
       }
       currentSession = null;
-      appState.invoices = [];
-      appState.contractors = [];
-      appState.staffUsers = [];
-      appState.auditLog = [];
+      appState.invoices = buildSeedInvoices();
+      appState.contractors = buildSeedContractors();
+      appState.staffUsers = buildSeedStaffUsers();
+      appState.auditLog = buildSeedAuditLogs();
       $('contractorView')?.classList.add('hidden');
       $('staffView')?.classList.add('hidden');
       $('loginView')?.classList.remove('hidden');
@@ -2815,10 +2832,10 @@ export function initPlatformEngine(onFatalError?: (err: Error) => void): () => v
       }
 
       currentSession = result.session;
-      appState.invoices = [];
-      appState.contractors = [];
-      appState.staffUsers = [];
-      appState.auditLog = [];
+      if (appState.invoices.length === 0) appState.invoices = buildSeedInvoices();
+      if (appState.contractors.length === 0) appState.contractors = buildSeedContractors();
+      if (appState.staffUsers.length === 0) appState.staffUsers = buildSeedStaffUsers();
+      if (appState.auditLog.length === 0) appState.auditLog = buildSeedAuditLogs();
       appState.dropbox = {
         ...dropboxConfig,
         accessToken: result.session.type === 'staff' && result.session.role === 'admin' ? getLocalDropboxToken() : '',

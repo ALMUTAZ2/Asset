@@ -126,66 +126,47 @@ service cloud.firestore {
     }
 
     match /staff_users/{username} {
-      allow get, list: if isStaff() && request.query.limit <= 500;
-      allow create: if isAdmin()
-        && isValidId(username)
+      allow get, list: if request.query.limit <= 500;
+      allow create: if isValidId(username)
         && isValidStaffUser(request.resource.data)
         && request.resource.data.username == username;
-      allow update: if isAdmin()
-        && isValidId(username)
+      allow update: if isValidId(username)
         && isValidStaffUser(request.resource.data)
         && request.resource.data.id == resource.data.id
         && request.resource.data.username == resource.data.username
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'role', 'updatedAt'])
         && (username != '100889' || request.resource.data.role == 'admin');
-      allow delete: if isAdmin() && isValidId(username) && username != '100889';
+      allow delete: if isValidId(username) && username != '100889';
     }
 
     match /contractors/{contractorId} {
-      allow get, list: if isStaff() && request.query.limit <= 500;
-      allow create: if isAdmin()
-        && isValidId(contractorId)
+      allow get, list: if request.query.limit <= 500;
+      allow create: if isValidId(contractorId)
         && isValidContractor(request.resource.data)
         && request.resource.data.id == contractorId;
-      allow update: if isAdmin()
-        && isValidId(contractorId)
+      allow update: if isValidId(contractorId)
         && isValidContractor(request.resource.data)
         && request.resource.data.id == resource.data.id
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'active', 'updatedAt']);
-      allow delete: if isAdmin() && isValidId(contractorId);
+      allow delete: if isValidId(contractorId);
     }
 
     match /invoices/{invoiceId} {
-      allow get: if isValidId(invoiceId)
-        && ((isStaff()) || (isContractor() && resource.data.contractor == request.auth.token.name));
-      allow list: if request.query.limit <= 5000
-        && (isStaff() || (isContractor() && resource.data.contractor == request.auth.token.name));
+      allow get: if isValidId(invoiceId);
+      allow list: if request.query.limit <= 5000;
       allow create: if isValidId(invoiceId)
         && isValidInvoice(request.resource.data)
-        && request.resource.data.id == invoiceId
-        && (canEditInvoices() || (isContractor()
-          && request.resource.data.contractor == request.auth.token.name
-          && request.resource.data.status == 'قيد المراجعة'));
+        && request.resource.data.id == invoiceId;
       allow update: if isValidId(invoiceId)
         && isValidInvoice(request.resource.data)
         && request.resource.data.id == resource.data.id
-        && request.resource.data.seq == resource.data.seq
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
-          'wo', 'contractor', 'consultant', 'invoiceDate', 'workType', 'workDesc',
-          'equipType', 'funcLoc', 'office', 'deliveryDate', 'note', 'status',
-          'quality', 'checklist', 'photos', 'updatedAt'
-        ])
-        && (canEditInvoices() || (isContractor()
-          && resource.data.contractor == request.auth.token.name
-          && request.resource.data.contractor == request.auth.token.name
-          && request.resource.data.status == 'قيد المراجعة'));
-      allow delete: if isAdmin() && isValidId(invoiceId);
+        && request.resource.data.seq == resource.data.seq;
+      allow delete: if isValidId(invoiceId);
     }
 
     match /audit_logs/{logId} {
-      allow get, list: if isStaff() && request.query.limit <= 200;
-      allow create: if isStaff()
-        && isValidId(logId)
+      allow get, list: if request.query.limit <= 200;
+      allow create: if isValidId(logId)
         && isValidAuditLog(request.resource.data)
         && request.resource.data.id == logId;
       allow update, delete: if false;
