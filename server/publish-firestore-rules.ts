@@ -20,7 +20,10 @@ export async function publishFirestoreRules(): Promise<void> {
     throw new Error(`Unable to create Firestore ruleset: ${ruleset.error?.message || rulesetResponse.status}`);
   }
 
-  const releaseId = `cloud.firestore/${firebaseConfig.firestoreDatabaseId}`;
+  const releaseId =
+    !firebaseConfig.firestoreDatabaseId || firebaseConfig.firestoreDatabaseId === '(default)'
+      ? 'cloud.firestore'
+      : `cloud.firestore/${firebaseConfig.firestoreDatabaseId}`;
   const releaseName = `projects/${firebaseConfig.projectId}/releases/${releaseId}`;
   const releaseResponse = await fetch(`${apiBase}/releases/${releaseId}`, {
     method: 'PATCH',

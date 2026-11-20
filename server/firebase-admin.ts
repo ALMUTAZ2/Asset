@@ -27,5 +27,8 @@ const app =
   });
 
 export const adminAuth = getAuth(app);
-export const adminDb = getFirestore(app, firebaseConfig.firestoreDatabaseId);
+export const adminDb =
+  !firebaseConfig.firestoreDatabaseId || firebaseConfig.firestoreDatabaseId === '(default)'
+    ? getFirestore(app)
+    : getFirestore(app, firebaseConfig.firestoreDatabaseId);
 export { FieldValue, firebaseConfig };
