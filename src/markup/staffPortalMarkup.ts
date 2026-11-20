@@ -2,14 +2,14 @@ export const STAFF_VIEW_MARKUP = `
     <!-- ==================== 3. DEPARTMENT STAFF PORTAL VIEW ==================== -->
     <section id="staffView" class="hidden min-h-screen flex bg-slatebg relative">
       <!-- Mobile Sidebar Overlay -->
-      <div id="sidebarOverlay" onclick="toggleMobileSidebar(false)" class="hidden fixed inset-0 bg-navy-950/50 z-40 lg:hidden"></div>
+      <div id="sidebarOverlay" onclick="toggleMobileSidebar(false)" class="hidden fixed inset-0 bg-se-extra-dark-blue/50 z-40 lg:hidden"></div>
 
       <!-- Staff Sidebar -->
-      <aside id="staffSidebar" class="fixed lg:sticky top-0 right-0 h-screen w-72 bg-navy-900 text-white flex flex-col justify-between z-50 translate-x-full lg:translate-x-0 transition-transform duration-300 shadow-2xl shrink-0">
+      <aside id="staffSidebar" class="fixed lg:sticky top-0 right-0 h-screen w-72 se-sidebar-gradient text-white flex flex-col justify-between z-50 translate-x-full lg:translate-x-0 transition-transform duration-300 shadow-2xl shrink-0">
         <div class="overflow-y-auto">
           <div class="p-5 border-b border-white/10 flex items-center justify-between">
             <div class="flex items-center gap-3">
-              <div class="w-10 h-10 rounded-xl bg-accent-500 flex items-center justify-center shadow">
+              <div class="w-10 h-10 rounded-xl bg-se-mid-blue flex items-center justify-center shadow">
                 <i data-lucide="zap" class="w-5 h-5 text-white"></i>
               </div>
               <div>
@@ -23,7 +23,7 @@ export const STAFF_VIEW_MARKUP = `
           </div>
 
           <nav class="p-3.5 space-y-1.5" id="staffNav">
-            <button onclick="switchStaffSection('dashboard')" data-sec="dashboard" class="staff-nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition bg-accent-500 text-white shadow">
+            <button onclick="switchStaffSection('dashboard')" data-sec="dashboard" class="staff-nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition bg-se-mid-blue text-white shadow">
               <i data-lucide="layout-dashboard" class="w-4 h-4"></i>
               <span>لوحة التحكم (Dashboard)</span>
             </button>
@@ -41,21 +41,21 @@ export const STAFF_VIEW_MARKUP = `
             </button>
             <button onclick="switchStaffSection('onedrive')" data-sec="onedrive" class="staff-nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition text-slate-300 hover:bg-white/10 hover:text-white">
               <i data-lucide="cloud" class="w-4 h-4"></i>
-              <span>الربط السحابي OneDrive</span>
+              <span>الأرشفة السحابية Dropbox</span>
             </button>
           </nav>
         </div>
 
-        <div class="p-4 border-t border-white/10 bg-navy-950/60">
+        <div class="p-4 border-t border-white/10 bg-se-extra-dark-blue/60">
           <div class="flex items-center gap-3 mb-3">
-            <div class="w-9 h-9 rounded-full bg-accent-500/20 border border-accent-500/40 text-accent-400 flex items-center justify-center font-extrabold text-sm" id="staffAvatarChar">م</div>
+            <div class="w-9 h-9 rounded-full bg-se-mid-blue/20 border border-se-mid-blue/40 text-se-light-blue flex items-center justify-center font-extrabold text-sm" id="staffAvatarChar">م</div>
             <div class="min-w-0">
               <div id="staffNameLabel" class="text-xs font-extrabold truncate">مرحباً</div>
               <div id="staffRoleLabel" class="text-[11px] text-slate-400 truncate">صلاحيات كاملة</div>
             </div>
           </div>
           <div class="space-y-1.5">
-            <button onclick="openResetPasswordModal(true)" class="w-full py-2 px-3 rounded-xl bg-white/5 hover:bg-accent-500 text-xs font-bold text-slate-200 hover:text-white flex items-center justify-center gap-2 transition border border-white/10">
+            <button onclick="openResetPasswordModal(true)" class="w-full py-2 px-3 rounded-xl bg-white/5 hover:bg-se-mid-blue text-xs font-bold text-slate-200 hover:text-white flex items-center justify-center gap-2 transition border border-white/10">
               <i data-lucide="key-round" class="w-3.5 h-3.5"></i>
               <span>إعادة تعيين كلمة المرور</span>
             </button>
@@ -65,19 +65,22 @@ export const STAFF_VIEW_MARKUP = `
             </button>
           </div>
         </div>
+        <div class="px-4 pb-2 text-[10px] text-se-light-blue/60 text-center">
+          منصة متابعة فواتير الصيانة والطوارئ<br/>قسم استلام الأصول — الشركة السعودية للطاقة
+        </div>
       </aside>
 
       <!-- Staff Main Content -->
       <div class="flex-1 flex flex-col min-w-0">
         <!-- Top Bar -->
-        <header class="bg-white border-b border-slate-200 sticky top-0 z-30 px-4 sm:px-6 py-3.5 flex items-center justify-between gap-3">
+        <header class="bg-white se-header-bar border-b border-slate-200 sticky top-0 z-30 px-4 sm:px-6 py-3.5 flex items-center justify-between gap-3">
           <div class="flex items-center gap-3">
-            <button onclick="toggleMobileSidebar(true)" class="lg:hidden p-2 rounded-xl bg-slate-100 text-navy-900">
+            <button onclick="toggleMobileSidebar(true)" class="lg:hidden p-2 rounded-xl bg-slate-100 text-se-dark-blue">
               <i data-lucide="menu" class="w-5 h-5"></i>
             </button>
             <div>
-              <h2 id="staffSectionTitle" class="text-lg font-extrabold text-navy-900">لوحة التحكم التنفيذية</h2>
-              <p id="staffTopWelcome" class="text-xs font-bold text-accent-600">مرحباً بك في منصة متابعة فواتير الصيانة والطوارئ</p>
+              <h2 id="staffSectionTitle" class="text-lg font-extrabold text-se-dark-blue">لوحة التحكم التنفيذية</h2>
+              <p id="staffTopWelcome" class="text-xs font-bold text-se-mid-blue">مرحباً بك في منصة متابعة فواتير الصيانة والطوارئ</p>
             </div>
           </div>
 
@@ -91,8 +94,8 @@ export const STAFF_VIEW_MARKUP = `
             <!-- Dashboard Filters & Filtered Export Bar -->
             <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 flex flex-col gap-3">
               <div class="flex flex-wrap items-center gap-3">
-                <div class="flex items-center gap-2 text-xs font-extrabold text-navy-900 ml-2">
-                  <i data-lucide="filter" class="w-4 h-4 text-accent-500"></i>
+                <div class="flex items-center gap-2 text-xs font-extrabold text-se-dark-blue ml-2">
+                  <i data-lucide="filter" class="w-4 h-4 text-se-mid-blue"></i>
                   <span>تصفية لوحة التحكم:</span>
                 </div>
                 <select id="dashContractorFilter" onchange="renderDashboard()" class="rounded-xl border border-slate-300 bg-slate-50 py-2 px-3 text-xs font-bold outline-none"></select>
@@ -106,17 +109,17 @@ export const STAFF_VIEW_MARKUP = `
                   <option value="ملاحظات معلقة">ملاحظات معلقة</option>
                   <option value="مرفوض">مرفوض</option>
                 </select>
-                <button onclick="resetDashFilters()" class="mr-auto text-xs font-bold text-accent-600 hover:underline">إعادة تعيين</button>
+                <button onclick="resetDashFilters()" class="mr-auto text-xs font-bold text-se-mid-blue hover:underline">إعادة تعيين</button>
               </div>
 
               <!-- Export Current Filtered Dashboard (PDF) -->
               <div class="pt-3 border-t border-slate-100 flex flex-wrap items-center justify-between gap-2.5">
                 <div id="dashActiveFilterHint" class="text-[11px] font-bold text-slate-500 flex items-center gap-1.5">
-                  <i data-lucide="sliders-horizontal" class="w-3.5 h-3.5 text-navy-700"></i>
+                  <i data-lucide="sliders-horizontal" class="w-3.5 h-3.5 text-se-dark-blue"></i>
                   <span>نطاق التصدير الحالي: كافة البيانات (بدون تصفية)</span>
                 </div>
                 <div class="flex flex-wrap items-center gap-2">
-                  <button type="button" onclick="exportDashboardPdf()" class="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-accent-500 hover:bg-accent-600 text-white text-xs font-extrabold shadow-sm transition">
+                  <button type="button" onclick="exportDashboardPdf()" class="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-se-mid-blue hover:bg-se-blue text-white text-xs font-extrabold shadow-sm transition">
                     <i data-lucide="file-text" class="w-4 h-4"></i>
                     <span>تصدير Dashboard PDF</span>
                   </button>
@@ -128,10 +131,10 @@ export const STAFF_VIEW_MARKUP = `
             <div id="dashKpiGrid" class="space-y-4"></div>
 
             <!-- Interactive KPI Drill-Down Table (Opens when clicking any KPI Card) -->
-            <div id="dashDrilldownPanel" class="hidden bg-white rounded-2xl shadow-md border-2 border-accent-500/30 overflow-hidden animate-fade-up">
-              <div class="p-4 bg-navy-900 text-white flex flex-wrap items-center justify-between gap-3">
+            <div id="dashDrilldownPanel" class="hidden bg-white rounded-2xl shadow-md border-2 border-se-mid-blue/30 overflow-hidden animate-fade-up">
+              <div class="p-4 bg-se-dark-blue text-white flex flex-wrap items-center justify-between gap-3">
                 <div class="flex items-center gap-2.5">
-                  <div class="w-8 h-8 rounded-xl bg-accent-500 flex items-center justify-center">
+                  <div class="w-8 h-8 rounded-xl bg-se-mid-blue flex items-center justify-center">
                     <i data-lucide="list-filter" class="w-4 h-4 text-white"></i>
                   </div>
                   <div>
@@ -173,8 +176,8 @@ export const STAFF_VIEW_MARKUP = `
 
             <!-- Chart 1 (Top): Work Types Distribution -->
             <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
-              <h3 class="text-sm font-extrabold text-navy-900 mb-3 flex items-center gap-2">
-                <i data-lucide="pie-chart" class="w-4 h-4 text-accent-500"></i>
+              <h3 class="text-sm font-extrabold text-se-dark-blue mb-3 flex items-center gap-2">
+                <i data-lucide="pie-chart" class="w-4 h-4 text-se-mid-blue"></i>
                 توزيع أنواع الأعمال
               </h3>
               <div class="max-w-md mx-auto">
@@ -182,7 +185,7 @@ export const STAFF_VIEW_MARKUP = `
                   <canvas id="chartWorkTypes"></canvas>
                   <div class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
                     <span class="text-[11px] font-bold text-slate-400">الإجمالي</span>
-                    <span id="workTypesTotalCenter" class="text-2xl font-black text-navy-900">0</span>
+                    <span id="workTypesTotalCenter" class="text-2xl font-black text-se-dark-blue">0</span>
                   </div>
                 </div>
                 <div id="workTypesBreakdown" class="mt-3 grid grid-cols-2 gap-2"></div>
@@ -192,8 +195,8 @@ export const STAFF_VIEW_MARKUP = `
             <!-- Chart 2: Contractors Stacked Bar -->
             <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
               <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
-                <h3 class="text-sm font-extrabold text-navy-900 flex items-center gap-2">
-                  <i data-lucide="bar-chart-horizontal" class="w-4 h-4 text-accent-500"></i>
+                <h3 class="text-sm font-extrabold text-se-dark-blue flex items-center gap-2">
+                  <i data-lucide="bar-chart-horizontal" class="w-4 h-4 text-se-mid-blue"></i>
                   عدد الفواتير حسب المقاول وحالة الاعتماد
                 </h3>
               </div>
@@ -203,15 +206,15 @@ export const STAFF_VIEW_MARKUP = `
             <!-- Charts Row 2 -->
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
               <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
-                <h3 class="text-sm font-extrabold text-navy-900 mb-3 flex items-center gap-2">
-                  <i data-lucide="map-pin" class="w-4 h-4 text-accent-500"></i>
+                <h3 class="text-sm font-extrabold text-se-dark-blue mb-3 flex items-center gap-2">
+                  <i data-lucide="map-pin" class="w-4 h-4 text-se-mid-blue"></i>
                   توزيع الفواتير حسب المكاتب
                 </h3>
                 <div class="h-64 relative"><canvas id="chartOffices"></canvas></div>
               </div>
               <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
-                <h3 class="text-sm font-extrabold text-navy-900 mb-3 flex items-center gap-2">
-                  <i data-lucide="wrench" class="w-4 h-4 text-accent-500"></i>
+                <h3 class="text-sm font-extrabold text-se-dark-blue mb-3 flex items-center gap-2">
+                  <i data-lucide="wrench" class="w-4 h-4 text-se-mid-blue"></i>
                   أكثر أوصاف الأعمال تكراراً
                 </h3>
                 <div class="h-64 relative"><canvas id="chartWorkDescs"></canvas></div>
@@ -222,7 +225,7 @@ export const STAFF_VIEW_MARKUP = `
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
               <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
                 <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
-                  <h3 class="text-sm font-extrabold text-navy-900 flex items-center gap-2">
+                  <h3 class="text-sm font-extrabold text-se-dark-blue flex items-center gap-2">
                     <i data-lucide="alert-octagon" class="w-4 h-4 text-rose-500"></i>
                     مؤشر أبرز أسباب تأخر إنجاز الفواتير
                   </h3>
@@ -233,7 +236,7 @@ export const STAFF_VIEW_MARKUP = `
 
               <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
                 <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
-                  <h3 class="text-sm font-extrabold text-navy-900 flex items-center gap-2">
+                  <h3 class="text-sm font-extrabold text-se-dark-blue flex items-center gap-2">
                     <i data-lucide="building-2" class="w-4 h-4 text-rose-500"></i>
                     مؤشر أسباب تأخر إنجاز الفواتير حسب المقاول
                   </h3>
@@ -249,21 +252,21 @@ export const STAFF_VIEW_MARKUP = `
             <!-- Action Bar -->
             <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 flex flex-wrap items-center justify-between gap-3">
               <div class="flex flex-wrap items-center gap-2">
-                <button id="staffAddInvBtn" onclick="openStaffInvoiceModal()" class="px-4 py-2.5 rounded-xl bg-navy-900 hover:bg-navy-800 text-white text-xs font-bold flex items-center gap-1.5 transition">
+                <button id="staffAddInvBtn" onclick="openStaffInvoiceModal()" class="px-4 py-2.5 rounded-xl bg-se-dark-blue hover:bg-se-blue text-white text-xs font-bold flex items-center gap-1.5 transition">
                   <i data-lucide="plus" class="w-4 h-4"></i>
                   <span>إضافة فاتورة</span>
                 </button>
-                <button id="staffExportExcelBtn" type="button" onclick="exportFilteredStaffInvoicesExcel()" class="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center gap-1.5 shadow-sm transition">
+                <button id="staffExportExcelBtn" type="button" onclick="exportFilteredStaffInvoicesExcel()" class="px-4 py-2.5 rounded-xl bg-se-tertiary-green hover:bg-se-tertiary-green/90 text-white text-xs font-bold flex items-center gap-1.5 shadow-sm transition">
                   <i data-lucide="file-spreadsheet" class="w-4 h-4"></i>
                   <span>تصدير Excel</span>
                 </button>
-                <button id="bulkApproveBtn" onclick="bulkApproveSelected()" class="hidden px-4 py-2.5 rounded-xl bg-accent-500 hover:bg-accent-600 text-white text-xs font-bold flex items-center gap-1.5 transition">
+                <button id="bulkApproveBtn" onclick="bulkApproveSelected()" class="hidden px-4 py-2.5 rounded-xl bg-se-mid-blue hover:bg-se-blue text-white text-xs font-bold flex items-center gap-1.5 transition">
                   <i data-lucide="check-check" class="w-4 h-4"></i>
                   <span>اعتماد المحدد (<span id="selectedCountSpan">0</span>)</span>
                 </button>
               </div>
               <div class="text-xs font-bold text-slate-500">
-                المعروض: <span id="staffTableCount" class="text-navy-900 font-extrabold">0</span> فاتورة
+                المعروض: <span id="staffTableCount" class="text-se-dark-blue font-extrabold">0</span> فاتورة
               </div>
             </div>
 
@@ -300,15 +303,15 @@ export const STAFF_VIEW_MARKUP = `
             <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
               <div class="px-4 py-2.5 bg-slate-50/80 border-b border-slate-200 flex items-center justify-between text-xs text-slate-600 font-bold">
                 <span class="flex items-center gap-2">
-                  <i data-lucide="table" class="w-4 h-4 text-accent-500"></i>
-                  <span>جميع بيانات الجدول — العدد الإجمالي: <span id="staffTableBannerCount" class="text-navy-900 font-black">0</span> فاتورة</span>
+                  <i data-lucide="table" class="w-4 h-4 text-se-mid-blue"></i>
+                  <span>جميع بيانات الجدول — العدد الإجمالي: <span id="staffTableBannerCount" class="text-se-dark-blue font-black">0</span> فاتورة</span>
                 </span>
               </div>
               <div id="staffTableScrollWrap" class="overflow-auto max-h-[65vh]">
                 <table class="copyable-table w-full min-w-max text-xs sm:text-sm text-right">
                   <thead class="bg-slate-100 text-slate-700 text-xs font-extrabold border-b border-slate-200 whitespace-nowrap sticky top-0 z-10 shadow-xs">
                     <tr>
-                      <th class="py-3 px-2.5 w-8 bg-slate-100"><input type="checkbox" id="selectAllInv" onchange="toggleSelectAllInv(this.checked)" class="w-4 h-4 accent-accent-500 rounded" /></th>
+                      <th class="py-3 px-2.5 w-8 bg-slate-100"><input type="checkbox" id="selectAllInv" onchange="toggleSelectAllInv(this.checked)" class="w-4 h-4 accent-se-mid-blue rounded" /></th>
                       <th class="py-3 px-2.5 bg-slate-100">أمر العمل</th>
                       <th class="py-3 px-2.5 bg-slate-100">المقاول</th>
                       <th class="py-3 px-2.5 bg-slate-100">الاستشاري</th>
@@ -336,9 +339,9 @@ export const STAFF_VIEW_MARKUP = `
           <div id="sec_reports" class="hidden space-y-6 animate-fade-up">
             <!-- Export Action Cards -->
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div class="bg-gradient-to-l from-navy-900 to-navy-800 text-white rounded-2xl p-6 shadow-md flex flex-col justify-between gap-4">
+              <div class="bg-gradient-to-l from-se-dark-blue to-se-blue text-white rounded-2xl p-6 shadow-md flex flex-col justify-between gap-4">
                 <div>
-                  <div class="inline-flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-full bg-white/10 text-accent-100 mb-3">
+                  <div class="inline-flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-full bg-white/10 text-se-light-blue mb-3">
                     <i data-lucide="printer" class="w-3.5 h-3.5"></i>
                     <span>تقرير تنفيذي جاهز للطباعة والحفظ كـ PDF</span>
                   </div>
@@ -347,7 +350,7 @@ export const STAFF_VIEW_MARKUP = `
                     يتضمن ملخص مؤشرات الأداء، مصفوفة المقاولين × نوع العمل، توزيع المكاتب، أبرز ملاحظات التأخير، والجدول التفصيلي الكامل للفواتير.
                   </p>
                 </div>
-                <button onclick="printExecutiveReport()" class="w-full sm:w-auto self-start px-5 py-3 rounded-xl bg-accent-500 hover:bg-accent-600 text-white text-sm font-extrabold shadow-lg transition flex items-center gap-2">
+                <button onclick="printExecutiveReport()" class="w-full sm:w-auto self-start px-5 py-3 rounded-xl bg-se-mid-blue hover:bg-se-blue text-white text-sm font-extrabold shadow-lg transition flex items-center gap-2">
                   <i data-lucide="file-text" class="w-4 h-4"></i>
                   <span>إصدار وطباعة التقرير الكامل PDF</span>
                 </button>
@@ -355,16 +358,16 @@ export const STAFF_VIEW_MARKUP = `
 
               <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 flex flex-col justify-between gap-4">
                 <div>
-                  <div class="inline-flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 mb-3">
+                  <div class="inline-flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-full bg-se-tertiary-green/20 text-se-tertiary-green mb-3">
                     <i data-lucide="file-spreadsheet" class="w-3.5 h-3.5"></i>
                     <span>ملف Excel متعدد الأوراق (.xlsx)</span>
                   </div>
-                  <h3 class="text-lg font-extrabold text-navy-900">تصدير قاعدة البيانات والتقارير إلى Excel</h3>
+                  <h3 class="text-lg font-extrabold text-se-dark-blue">تصدير قاعدة البيانات والتقارير إلى Excel</h3>
                   <p class="text-xs text-slate-500 mt-1 leading-relaxed">
                     ينشئ ملف إكسل حقيقي يحتوي على 3 أوراق: (1) الفواتير التفصيلية مع روابط OneDrive، (2) ملخص أداء المقاولين ونوع العمل، (3) سجل ملاحظات التأخير.
                   </p>
                 </div>
-                <button onclick="exportFullExcel()" class="w-full sm:w-auto self-start px-5 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-extrabold shadow transition flex items-center gap-2">
+                <button onclick="exportFullExcel()" class="w-full sm:w-auto self-start px-5 py-3 rounded-xl bg-se-tertiary-green hover:bg-se-tertiary-green/90 text-white text-sm font-extrabold shadow transition flex items-center gap-2">
                   <i data-lucide="download" class="w-4 h-4"></i>
                   <span>تنزيل ملف Excel الشامل (.xlsx)</span>
                 </button>
@@ -375,7 +378,7 @@ export const STAFF_VIEW_MARKUP = `
             <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
               <div class="p-5 border-b border-slate-100 flex flex-wrap items-center justify-between gap-2">
                 <div>
-                  <h3 class="text-base font-extrabold text-navy-900">بطاقة أداء المقاولين ومصفوفة أنواع الأعمال</h3>
+                  <h3 class="text-base font-extrabold text-se-dark-blue">بطاقة أداء المقاولين ومصفوفة أنواع الأعمال</h3>
                   <p class="text-xs text-slate-500">تحديث لحظي مطابق لهيكل ورقة5 مع نسب الاعتماد ومؤشر الالتزام</p>
                 </div>
               </div>
@@ -389,7 +392,7 @@ export const STAFF_VIEW_MARKUP = `
                       <th class="py-3 px-3 text-center">صيانة معدة</th>
                       <th class="py-3 px-3 text-center">صيانة مغذي</th>
                       <th class="py-3 px-3 text-center">C4C</th>
-                      <th class="py-3 px-3 text-center text-emerald-700">معتمد</th>
+                      <th class="py-3 px-3 text-center text-se-tertiary-green">معتمد</th>
                       <th class="py-3 px-3 text-center text-rose-700">مرفوض/ملاحظات</th>
                       <th class="py-3 px-4">نسبة الاعتماد</th>
                     </tr>
@@ -407,10 +410,10 @@ export const STAFF_VIEW_MARKUP = `
               <div class="xl:col-span-7 bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
                 <div class="p-5 border-b border-slate-100 flex flex-wrap items-center justify-between gap-3">
                   <div>
-                    <h3 class="text-base font-extrabold text-navy-900">إدارة حسابات المقاولين (31 مقاولاً)</h3>
+                    <h3 class="text-base font-extrabold text-se-dark-blue">إدارة حسابات المقاولين (31 مقاولاً)</h3>
                     <p class="text-xs text-slate-500">تعديل الرقم السري، تفعيل أو إيقاف الدخول، وإضافة مقاول جديد — محفوظ مباشرة في Firestore</p>
                   </div>
-                  <button onclick="addNewContractorPrompt()" class="px-3.5 py-2 rounded-xl bg-accent-500 hover:bg-accent-600 text-white text-xs font-bold flex items-center gap-1.5">
+                  <button onclick="addNewContractorPrompt()" class="px-3.5 py-2 rounded-xl bg-se-mid-blue hover:bg-se-blue text-white text-xs font-bold flex items-center gap-1.5">
                     <i data-lucide="plus" class="w-4 h-4"></i>
                     <span>مقاول جديد</span>
                   </button>
@@ -437,7 +440,7 @@ export const STAFF_VIEW_MARKUP = `
               <!-- Staff Accounts -->
               <div class="xl:col-span-5 bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden flex flex-col">
                 <div class="p-5 border-b border-slate-100">
-                  <h3 class="text-base font-extrabold text-navy-900">حسابات موظفي القسم والصلاحيات</h3>
+                  <h3 class="text-base font-extrabold text-se-dark-blue">حسابات موظفي القسم والصلاحيات</h3>
                   <p class="text-xs text-slate-500">إضافة موظف جديد وتعديل مستوى الصلاحية — متزامن لحظياً مع Firestore</p>
                 </div>
                 <form onsubmit="addStaffUser(event)" class="p-4 bg-slate-50 border-b border-slate-200 grid grid-cols-2 gap-2.5">
@@ -449,7 +452,7 @@ export const STAFF_VIEW_MARKUP = `
                     <option value="reviewer">مهندس مراجع (اعتماد)</option>
                     <option value="viewer">مراقب (عرض وتقارير)</option>
                   </select>
-                  <button type="submit" class="col-span-2 py-2 rounded-lg bg-navy-900 hover:bg-navy-800 text-white text-xs font-bold transition">
+                  <button type="submit" class="col-span-2 py-2 rounded-lg bg-se-dark-blue hover:bg-se-blue text-white text-xs font-bold transition">
                     إضافة حساب موظف
                   </button>
                 </form>
@@ -472,8 +475,8 @@ export const STAFF_VIEW_MARKUP = `
             <!-- Live Audit Log -->
             <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
               <div class="p-5 border-b border-slate-100 flex items-center justify-between">
-                <h3 class="text-base font-extrabold text-navy-900 flex items-center gap-2">
-                  <i data-lucide="history" class="w-4 h-4 text-accent-500"></i>
+                <h3 class="text-base font-extrabold text-se-dark-blue flex items-center gap-2">
+                  <i data-lucide="history" class="w-4 h-4 text-se-mid-blue"></i>
                   سجل التدقيق والعمليات (Audit Log)
                 </h3>
                 <span class="text-xs text-slate-400">آخر 40 عملية</span>
@@ -494,73 +497,106 @@ export const STAFF_VIEW_MARKUP = `
             </div>
           </div>
 
-          <!-- ========== MODULE 5: MICROSOFT ONEDRIVE INTEGRATION ========== -->
+          <!-- ========== MODULE 5: DROPBOX CLOUD ARCHIVING ========== -->
           <div id="sec_onedrive" class="hidden space-y-6 animate-fade-up">
             <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
-              <!-- Config & OAuth Form -->
+              <!-- Config & Token Form -->
               <div class="lg:col-span-7 bg-white rounded-2xl shadow-sm border border-slate-200 p-6 space-y-5">
                 <div class="flex items-center justify-between gap-3 pb-4 border-b border-slate-100">
                   <div class="flex items-center gap-3">
-                    <div class="w-11 h-11 rounded-2xl bg-sky-100 text-sky-600 flex items-center justify-center">
-                      <i data-lucide="cloud" class="w-6 h-6"></i>
+                    <div class="w-11 h-11 rounded-2xl bg-se-light-blue/20 text-se-mid-blue flex items-center justify-center">
+                      <svg class="w-6 h-6" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M6 2L0 6l6 4-6 4 6 4 6-4-6-4 6-4L6 2zm12 0l-6 4 6 4-6 4 6 4 6-4-6-4 6-4-6-4zM6 18l6 4 6-4-6-4-6 4z"/>
+                      </svg>
                     </div>
                     <div>
-                      <h3 class="text-base font-extrabold text-navy-900">إعدادات الربط السحابي مع Microsoft OneDrive</h3>
-                      <p class="text-xs text-slate-500">رفع وتخزين صور المقاولين مباشرة عبر Microsoft Graph API</p>
+                      <h3 class="text-base font-extrabold text-se-dark-blue">إعدادات الربط السحابي مع Dropbox</h3>
+                      <p class="text-xs text-slate-500">أرشفة سحابية موثوقة لصور ومرفقات الفواتير مع تجديد التوكن تلقائياً كل ساعتين</p>
                     </div>
                   </div>
-                  <span id="odStatusBadge" class="text-xs font-extrabold px-3 py-1 rounded-full bg-amber-100 text-amber-800">غير متصل (حفظ محلي)</span>
+                  <span id="odStatusBadge" class="text-xs font-extrabold px-3 py-1 rounded-full bg-amber-100 text-amber-800">غير متصل</span>
+                </div>
+
+                <div class="bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs font-mono text-slate-600" dir="ltr">
+                  <span class="text-slate-400 font-sans font-bold">هيكل الأرشفة: </span>
+                  <span class="text-se-dark-blue font-bold">{المجلد الأساسي}/{اسم المقاول}/{رقم أمر العمل}/الصور</span>
                 </div>
 
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div class="sm:col-span-2">
-                    <label class="block text-xs font-extrabold text-navy-900 mb-1.5">معرّف تطبيق Azure (Client ID)</label>
-                    <input type="text" id="odClientId" placeholder="مثال: 12345678-abcd-efgh-ijkl-1234567890ab"
+                    <label class="block text-xs font-extrabold text-se-dark-blue mb-1.5">المجلد الأساسي في Dropbox</label>
+                    <input type="text" id="odBaseFolder" value="/Apps/Invoice Tracker – Asset Receiving"
+                      class="w-full rounded-xl border border-slate-300 bg-slate-50 py-2.5 px-3.5 text-xs font-bold outline-none" dir="ltr" />
+                  </div>
+                  <div>
+                    <label class="block text-xs font-extrabold text-se-dark-blue mb-1.5">Dropbox App Key (Client ID)</label>
+                    <input type="text" id="odClientId" placeholder="أدخل App Key من لوحة مطوري Dropbox"
                       class="w-full rounded-xl border border-slate-300 bg-slate-50 py-2.5 px-3.5 text-xs font-mono outline-none" dir="ltr" />
                   </div>
                   <div>
-                    <label class="block text-xs font-extrabold text-navy-900 mb-1.5">معرّف المستأجر (Tenant ID)</label>
-                    <input type="text" id="odTenantId" value="common" placeholder="common"
+                    <label class="block text-xs font-extrabold text-se-dark-blue mb-1.5">Dropbox App Secret</label>
+                    <input type="password" id="odAppSecret" placeholder="أدخل App Secret للتجديد التلقائي"
                       class="w-full rounded-xl border border-slate-300 bg-slate-50 py-2.5 px-3.5 text-xs font-mono outline-none" dir="ltr" />
-                  </div>
-                  <div>
-                    <label class="block text-xs font-extrabold text-navy-900 mb-1.5">المجلد الرئيسي على OneDrive</label>
-                    <input type="text" id="odBaseFolder" value="/فواتير_الصيانة_والطوارئ"
-                      class="w-full rounded-xl border border-slate-300 bg-slate-50 py-2.5 px-3.5 text-xs font-bold outline-none" />
                   </div>
                   <div class="sm:col-span-2">
-                    <label class="block text-xs font-extrabold text-navy-900 mb-1.5">رمز الوصول المباشر (Access Token - محلي بالمتصفح فقط ولا يُحفظ بالسحابة)</label>
-                    <input type="password" id="odAccessToken" placeholder="الصق Graph API Access Token أو استخدم زر الربط المباشر أدناه"
+                    <label class="block text-xs font-extrabold text-se-dark-blue mb-1.5">
+                      Dropbox Refresh Token (دائم — لتجديد التوكن تلقائياً على كل الأجهزة)
+                    </label>
+                    <input type="password" id="odRefreshToken" placeholder="أدخل Refresh Token الدائم (يُحفظ بأمان في Firebase)"
                       class="w-full rounded-xl border border-slate-300 bg-slate-50 py-2.5 px-3.5 text-xs font-mono outline-none" dir="ltr" />
+                  </div>
+                  <div class="sm:col-span-2">
+                    <label class="block text-xs font-extrabold text-se-dark-blue mb-1.5">
+                      Dropbox Access Token
+                      <span class="text-[11px] font-semibold text-slate-400">(يتجدد تلقائياً كل ساعتين عبر مجدول الخلفية، أو يمكن إدخاله يدوياً)</span>
+                    </label>
+                    <input type="password" id="odAccessToken" placeholder="sl.xxxxxxxxxxxxxxxxxxxx (يتحدث تلقائياً)"
+                      class="w-full rounded-xl border border-slate-300 bg-slate-50 py-2.5 px-3.5 text-xs font-mono outline-none" dir="ltr" />
+                    <p id="odTokenExpiryHint" class="text-[11px] font-bold text-slate-500 mt-1"></p>
                   </div>
                 </div>
 
+                <!-- Action Buttons -->
                 <div class="flex flex-wrap gap-2.5 pt-2">
-                  <button type="button" onclick="saveOneDriveConfig()" class="px-4 py-2.5 rounded-xl bg-navy-900 hover:bg-navy-800 text-white text-xs font-bold transition">
-                    حفظ الإعدادات
+                  <button type="button" onclick="saveDropboxConfig()" class="px-4 py-2.5 rounded-xl bg-se-dark-blue hover:bg-se-blue text-white text-xs font-bold transition flex items-center gap-1.5 shadow-sm">
+                    <i data-lucide="save" class="w-4 h-4"></i>
+                    <span>حفظ الإعدادات في Firebase</span>
                   </button>
-                  <button type="button" onclick="connectOneDriveOAuth()" class="px-4 py-2.5 rounded-xl bg-sky-600 hover:bg-sky-700 text-white text-xs font-bold flex items-center gap-1.5 transition">
-                    <i data-lucide="link-2" class="w-4 h-4"></i>
-                    <span>ربط حساب OneDrive الآن</span>
+                  <button type="button" onclick="testDropboxConnection()" class="px-4 py-2.5 rounded-xl bg-se-light-blue hover:bg-se-mid-blue text-white text-xs font-bold flex items-center gap-1.5 transition shadow-sm">
+                    <i data-lucide="plug" class="w-4 h-4"></i>
+                    <span>تجديد التوكن وفحص الاتصال</span>
                   </button>
-                  <button type="button" onclick="verifyOneDriveToken()" class="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center gap-1.5 transition">
-                    <i data-lucide="check-circle-2" class="w-4 h-4"></i>
-                    <span>فحص الاتصال</span>
-                  </button>
-                  <button type="button" onclick="syncLocalPhotosToOneDrive()" class="px-4 py-2.5 rounded-xl bg-accent-500 hover:bg-accent-600 text-white text-xs font-bold flex items-center gap-1.5 transition">
+                  <button type="button" onclick="syncAllPhotosToDropbox()" class="px-4 py-2.5 rounded-xl bg-se-mid-blue hover:bg-se-blue text-white text-xs font-bold flex items-center gap-1.5 transition shadow-sm">
                     <i data-lucide="refresh-cw" class="w-4 h-4"></i>
-                    <span>مزامنة الصور المحلية</span>
+                    <span>مزامنة شاملة من المنصة إلى Dropbox</span>
                   </button>
                 </div>
+                <p class="text-[11px] text-slate-500 font-medium">
+                  يقوم بنقل كافة المقاولين وأوامر العمل وإنشاء مجلداتها وبطاقاتها الرسمية ورفع جميع الصور المرفقة تلقائياً إلى Dropbox.
+                </p>
 
-                <!-- 4-Step Guide -->
+                <!-- Live Progress Bar for Sync -->
+                <div id="dropboxSyncProgressContainer" class="hidden p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-2">
+                  <div class="flex items-center justify-between text-xs font-extrabold text-se-dark-blue">
+                    <span class="flex items-center gap-1.5">
+                      <span class="w-2 h-2 rounded-full bg-se-mid-blue animate-pulse"></span>
+                      <span id="dropboxSyncProgressTitle">جاري مزامنة كافة المقاولين وأوامر العمل إلى Dropbox...</span>
+                    </span>
+                    <span id="dropboxSyncProgressText" class="text-se-mid-blue font-mono">0 / 0 (0%)</span>
+                  </div>
+                  <div class="w-full h-2.5 bg-slate-200 rounded-full overflow-hidden">
+                    <div id="dropboxSyncProgressBar" class="h-full bg-gradient-to-r from-se-mid-blue to-se-light-blue rounded-full transition-all duration-300 w-0"></div>
+                  </div>
+                </div>
+
+                <!-- Setup Guide -->
                 <div class="bg-slate-50 rounded-xl p-4 border border-slate-200 text-xs space-y-2">
-                  <h4 class="font-extrabold text-navy-900">خطوات تفعيل الربط الحقيقي مع حساب OneDrive الخاص بالقسم:</h4>
+                  <h4 class="font-extrabold text-se-dark-blue">خطوات الحصول على بيانات الربط من Dropbox App Console:</h4>
                   <ol class="list-decimal list-inside space-y-1 text-slate-600 leading-relaxed">
-                    <li>سجّل الدخول إلى بوابة <span class="font-mono font-bold text-navy-800">portal.azure.com</span> واختر <b>App Registrations &gt; New registration</b>.</li>
-                    <li>أضف رابط الصفحة الحالية كـ <b>Redirect URI (Single-page application)</b>، وفعّل <b>Access tokens</b> من تبويب Authentication.</li>
-                    <li>من تبويب <b>API Permissions</b> أضف صلاحية <b>Microsoft Graph &gt; Files.ReadWrite</b> و <b>User.Read</b>.</li>
-                    <li>انسخ <b>Application (client) ID</b> والصقه في الحقل أعلاه ثم اضغط «ربط حساب OneDrive الآن».</li>
+                    <li>ادخل إلى <span class="font-mono font-bold text-se-dark-blue">dropbox.com/developers/apps</span> وأنشئ تطبيقاً من نوع <b>Scoped Access</b>.</li>
+                    <li>من تبويب <b>Permissions</b> فعّل الصلاحيات التالية: <span class="font-mono text-se-dark-blue">files.content.write, files.content.read, account_info.read</span>.</li>
+                    <li>من تبويب <b>Settings</b> انسخ <b>App key</b> و <b>App secret</b> والصقهما في الحقول أعلاه.</li>
+                    <li>احصل على <b>Refresh Token</b> دائم (عبر رابط OAuth أو أمر Token مع refresh_token)، والصقه لتفعيل التجديد التلقائي الدائم كل ساعتين.</li>
                   </ol>
                 </div>
               </div>
@@ -568,15 +604,16 @@ export const STAFF_VIEW_MARKUP = `
               <!-- Visual Folder Tree Preview -->
               <div class="lg:col-span-5 bg-white rounded-2xl shadow-sm border border-slate-200 p-6 flex flex-col justify-between">
                 <div>
-                  <h3 class="text-base font-extrabold text-navy-900 mb-1 flex items-center gap-2">
-                    <i data-lucide="folder-tree" class="w-5 h-5 text-accent-500"></i>
-                    هيكل الأرشفة التلقائي على OneDrive
+                  <h3 class="text-base font-extrabold text-se-dark-blue mb-1 flex items-center gap-2">
+                    <i data-lucide="folder-tree" class="w-5 h-5 text-se-mid-blue"></i>
+                    شجرة مجلدات Dropbox التلقائية
                   </h3>
-                  <p class="text-xs text-slate-500 mb-4">يتم إنشاء المجلدات وتسمية الصور تلقائياً باسم المقاول ورقم أمر العمل</p>
-                  <div id="odFolderTreePreview" class="bg-navy-950 text-sky-100 rounded-2xl p-4 font-mono text-xs space-y-1.5 overflow-y-auto max-h-80" dir="ltr"></div>
+                  <p class="text-xs text-slate-500 mb-4">تنظيم تلقائي فوري: المجلد الأساسي ← اسم المقاول ← رقم أمر العمل</p>
+                  <div id="odFolderTreePreview" class="bg-se-extra-dark-blue text-se-green rounded-2xl p-4 font-mono text-xs space-y-1.5 overflow-y-auto max-h-80" dir="ltr"></div>
                 </div>
-                <div class="mt-4 p-3 rounded-xl bg-sky-50 border border-sky-200 text-xs text-sky-900 font-semibold">
-                  إجمالي الصور المؤرشفة في المنصة حالياً: <span id="odTotalPhotosCount" class="font-extrabold text-sky-700">0</span> صورة
+                <div class="mt-4 p-3 rounded-xl bg-se-light-blue/20 border border-se-light-blue/40 text-xs text-se-dark-blue font-semibold flex items-center justify-between">
+                  <span>إجمالي أوامر العمل والصور:</span>
+                  <span class="font-extrabold text-se-mid-blue font-mono text-sm"><span id="odTotalWosCount">0</span> أمر عمل / <span id="odTotalPhotosCount">0</span> صورة</span>
                 </div>
               </div>
             </div>

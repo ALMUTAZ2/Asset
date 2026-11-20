@@ -252,7 +252,7 @@ export function buildSeedInvoices(): InvoiceRecord[] {
             name: `WO_${item.wo}_after.jpg`,
             stage: 'بعد التنفيذ',
             dataUrl: makeSamplePhotoSvg(item.wo, 'بعد التنفيذ'),
-            oneDrivePath: `/فواتير_الصيانة_والطوارئ/${item.contractor}/${item.wo}/WO_${item.wo}_after.jpg`,
+            oneDrivePath: `/Apps/Invoice Tracker – Asset Receiving/${item.contractor}/${item.wo}/WO_${item.wo}_after.jpg`,
             synced: false,
           },
         ]
@@ -304,8 +304,12 @@ export async function buildInitialSeedBundle(): Promise<SeedBundle> {
     },
     oneDrive: {
       clientId: '',
-      tenantId: 'common',
-      baseFolder: '/فواتير_الصيانة_والطوارئ',
+      appSecret: '',
+      refreshToken: '',
+      accessToken: '',
+      tokenExpiresAt: 0,
+      tenantId: 'dropbox',
+      baseFolder: '/Apps/Invoice Tracker – Asset Receiving',
       connectedUser: '',
       updatedAt: nowIso,
     },

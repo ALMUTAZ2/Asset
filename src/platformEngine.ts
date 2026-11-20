@@ -6,6 +6,7 @@ import {
   type InvoicePhoto,
   type InvoiceRecord,
   type OneDriveCloudSettings,
+  type DropboxCloudSettings,
   type StaffRole,
   type StaffUser,
   ensureFirestoreSeeded,
@@ -48,47 +49,54 @@ import {
   todayISO,
 } from './engine/dashboardAndExport';
 
-const LOCAL_ONEDRIVE_TOKEN_KEY = 'sec_onedrive_local_token_v1';
+const LOCAL_DROPBOX_TOKEN_KEY = 'sec_dropbox_token_v1';
 
 interface AppState {
   invoices: InvoiceRecord[];
   contractors: ContractorRecord[];
   staffUsers: StaffUser[];
   auditLog: AuditLogRecord[];
-  oneDrive: OneDriveCloudSettings & { accessToken: string };
+  dropbox: OneDriveCloudSettings & { accessToken: string; appSecret: string; refreshToken: string; tokenExpiresAt: number };
+  oneDrive: OneDriveCloudSettings & { accessToken: string; appSecret: string; refreshToken: string; tokenExpiresAt: number };
 }
 
-function getLocalOneDriveToken(): string {
+function getLocalDropboxToken(): string {
   try {
-    return localStorage.getItem(LOCAL_ONEDRIVE_TOKEN_KEY) || '';
+    return localStorage.getItem(LOCAL_DROPBOX_TOKEN_KEY) || '';
   } catch {
     return '';
   }
 }
 
-function setLocalOneDriveToken(token: string): void {
+function setLocalDropboxToken(token: string): void {
   try {
-    if (token) localStorage.setItem(LOCAL_ONEDRIVE_TOKEN_KEY, token);
-    else localStorage.removeItem(LOCAL_ONEDRIVE_TOKEN_KEY);
+    if (token) localStorage.setItem(LOCAL_DROPBOX_TOKEN_KEY, token);
+    else localStorage.removeItem(LOCAL_DROPBOX_TOKEN_KEY);
   } catch {
     // Ignore storage quota errors
   }
 }
 
 export function initPlatformEngine(onFatalError?: (err: Error) => void): () => void {
+  const dropboxConfig = {
+    clientId: '',
+    appSecret: '',
+    refreshToken: '',
+    accessToken: getLocalDropboxToken(),
+    tokenExpiresAt: 0,
+    tenantId: 'dropbox',
+    baseFolder: '/Apps/Invoice Tracker – Asset Receiving',
+    connectedUser: '',
+    updatedAt: '',
+  };
+
   const appState: AppState = {
     invoices: [],
     contractors: [],
     staffUsers: [],
     auditLog: [],
-    oneDrive: {
-      clientId: '',
-      tenantId: 'common',
-      baseFolder: '/فواتير_الصيانة_والطوارئ',
-      connectedUser: '',
-      updatedAt: '',
-      accessToken: getLocalOneDriveToken(),
-    },
+    dropbox: dropboxConfig,
+    oneDrive: dropboxConfig,
   };
 
   let currentSession: SessionInfo | null = null;
@@ -114,10 +122,10 @@ export function initPlatformEngine(onFatalError?: (err: Error) => void): () => v
     type: 'success' | 'error' | 'warning' | 'info' = 'success'
   ): void {
     const colors: Record<string, string> = {
-      success: 'bg-emerald-600 text-white',
-      error: 'bg-rose-600 text-white',
-      warning: 'bg-amber-500 text-navy-950',
-      info: 'bg-navy-900 text-white',
+      success: 'bg-se-tertiary-green text-white',
+      error: 'bg-se-tertiary-red text-white',
+      warning: 'bg-se-tertiary-orange text-white',
+      info: 'bg-se-mid-blue text-white',
     };
     const container = $('toastContainer');
     if (!container) return;
@@ -332,16 +340,16 @@ export function initPlatformEngine(onFatalError?: (err: Error) => void): () => v
 
     if (mode === 'contractor') {
       cBtn.className =
-        'flex items-center justify-center gap-2 py-3 px-4 rounded-xl text-sm font-bold transition-all bg-navy-900 text-white shadow-sm';
+        'flex items-center justify-center gap-2 py-3 px-4 rounded-xl text-sm font-bold transition-all bg-se-dark-blue text-white shadow-sm';
       sBtn.className =
-        'flex items-center justify-center gap-2 py-3 px-4 rounded-xl text-sm font-bold transition-all text-slate-600 hover:text-navy-900';
+        'flex items-center justify-center gap-2 py-3 px-4 rounded-xl text-sm font-bold transition-all text-slate-600 hover:text-se-dark-blue';
       cForm.classList.remove('hidden');
       sForm.classList.add('hidden');
     } else {
       sBtn.className =
-        'flex items-center justify-center gap-2 py-3 px-4 rounded-xl text-sm font-bold transition-all bg-navy-900 text-white shadow-sm';
+        'flex items-center justify-center gap-2 py-3 px-4 rounded-xl text-sm font-bold transition-all bg-se-dark-blue text-white shadow-sm';
       cBtn.className =
-        'flex items-center justify-center gap-2 py-3 px-4 rounded-xl text-sm font-bold transition-all text-slate-600 hover:text-navy-900';
+        'flex items-center justify-center gap-2 py-3 px-4 rounded-xl text-sm font-bold transition-all text-slate-600 hover:text-se-dark-blue';
       sForm.classList.remove('hidden');
       cForm.classList.add('hidden');
     }
@@ -367,9 +375,9 @@ export function initPlatformEngine(onFatalError?: (err: Error) => void): () => v
       .map(
         (c) => `
       <button type="button" onclick="selectContractorFromList('${escapeHtml(c.name)}')"
-        class="w-full text-right px-4 py-2.5 text-sm font-semibold hover:bg-accent-50 hover:text-accent-700 flex items-center justify-between transition ${!c.active ? 'opacity-50' : ''}">
+        class="w-full text-right px-4 py-2.5 text-sm font-semibold hover:bg-se-mid-blue/20 hover:text-se-blue flex items-center justify-between transition ${!c.active ? 'opacity-50' : ''}">
         <span>${escapeHtml(c.name)}</span>
-        ${!c.active ? '<span class="text-[10px] bg-rose-100 text-rose-700 px-2 py-0.5 rounded-full">موقوف</span>' : ''}
+        ${!c.active ? '<span class="text-[10px] bg-se-tertiary-red/20 text-se-tertiary-red px-2 py-0.5 rounded-full">موقوف</span>' : ''}
       </button>
     `
       )
@@ -612,7 +620,7 @@ export function initPlatformEngine(onFatalError?: (err: Error) => void): () => v
       formPanel.classList.remove('hidden');
       listPanel.classList.add('hidden');
       formBtn.className =
-        'px-4 py-2.5 rounded-xl text-sm font-bold flex items-center gap-2 bg-accent-500 text-white transition';
+        'px-4 py-2.5 rounded-xl text-sm font-bold flex items-center gap-2 bg-se-mid-blue/200 text-white transition';
       listBtn.className =
         'px-4 py-2.5 rounded-xl text-sm font-bold flex items-center gap-2 text-slate-600 hover:bg-slate-100 transition';
     }
@@ -629,11 +637,11 @@ export function initPlatformEngine(onFatalError?: (err: Error) => void): () => v
     const rate = total ? Math.round((approved / total) * 100) : 0;
 
     const cards = [
-      { label: 'إجمالي فواتيري', val: total, icon: 'file-text', cls: 'bg-navy-50 text-navy-900' },
-      { label: 'المعتمدة', val: approved, icon: 'check-circle-2', cls: 'bg-emerald-50 text-emerald-700' },
-      { label: 'قيد المراجعة', val: pending, icon: 'clock', cls: 'bg-sky-50 text-sky-700' },
-      { label: 'مرفوضة / ملاحظات', val: flagged, icon: 'alert-circle', cls: 'bg-rose-50 text-rose-700' },
-      { label: 'نسبة الاعتماد', val: rate + '%', icon: 'trending-up', cls: 'bg-accent-50 text-accent-600' },
+      { label: 'إجمالي فواتيري', val: total, icon: 'file-text', cls: 'bg-se-navy-50 text-se-dark-blue' },
+      { label: 'المعتمدة', val: approved, icon: 'check-circle-2', cls: 'bg-se-tertiary-green/20 text-se-tertiary-green' },
+      { label: 'قيد المراجعة', val: pending, icon: 'clock', cls: 'bg-se-light-blue/20 text-se-mid-blue' },
+      { label: 'مرفوضة / ملاحظات', val: flagged, icon: 'alert-circle', cls: 'bg-se-tertiary-red/20 text-se-tertiary-red' },
+      { label: 'نسبة الاعتماد', val: rate + '%', icon: 'trending-up', cls: 'bg-se-mid-blue/20 text-se-mid-blue' },
     ];
 
     const grid = $('contractorKpiGrid');
@@ -644,7 +652,7 @@ export function initPlatformEngine(onFatalError?: (err: Error) => void): () => v
         <div class="bg-white rounded-2xl p-4 shadow-sm border border-slate-200 flex items-center justify-between gap-3">
           <div>
             <p class="text-xs font-bold text-slate-500">${c.label}</p>
-            <p class="text-2xl font-black text-navy-900 mt-1">${c.val}</p>
+            <p class="text-2xl font-black text-se-dark-blue mt-1">${c.val}</p>
           </div>
           <div class="w-10 h-10 rounded-xl ${c.cls} flex items-center justify-center shrink-0">
             <i data-lucide="${c.icon}" class="w-5 h-5"></i>
@@ -685,12 +693,12 @@ export function initPlatformEngine(onFatalError?: (err: Error) => void): () => v
           inv.status === 'مرفوض' || inv.status === 'ملاحظات معلقة' || inv.status === 'قيد المراجعة';
         return `
           <tr class="hover:bg-slate-50/80 transition">
-            <td class="py-3 px-3 font-mono font-extrabold text-navy-900 whitespace-nowrap" dir="ltr">${escapeHtml(inv.wo)}</td>
+            <td class="py-3 px-3 font-mono font-extrabold text-se-dark-blue whitespace-nowrap" dir="ltr">${escapeHtml(inv.wo)}</td>
             <td class="py-3 px-3 text-xs font-semibold whitespace-nowrap">${escapeHtml(inv.consultant)}</td>
             <td class="py-3 px-3 text-xs font-mono text-slate-600 whitespace-nowrap" dir="ltr">${escapeHtml(inv.invoiceDate || '-')}</td>
-            <td class="py-3 px-3 whitespace-nowrap"><span class="px-2 py-0.5 rounded-lg bg-navy-50 text-navy-800 text-xs font-bold">${escapeHtml(inv.workType)}</span></td>
-            <td class="py-3 px-3 text-xs font-bold text-navy-900">${escapeHtml(inv.workDesc)}</td>
-            <td class="py-3 px-3 text-xs font-bold text-navy-800 whitespace-nowrap">${escapeHtml(inv.equipType)}</td>
+            <td class="py-3 px-3 whitespace-nowrap"><span class="px-2 py-0.5 rounded-lg bg-se-navy-50 text-se-blue text-xs font-bold">${escapeHtml(inv.workType)}</span></td>
+            <td class="py-3 px-3 text-xs font-bold text-se-dark-blue">${escapeHtml(inv.workDesc)}</td>
+            <td class="py-3 px-3 text-xs font-bold text-se-blue whitespace-nowrap">${escapeHtml(inv.equipType)}</td>
             <td class="py-3 px-3 font-mono text-[11px] text-slate-600 whitespace-nowrap" dir="ltr">${escapeHtml(inv.funcLoc || '-')}</td>
             <td class="py-3 px-3 text-xs font-semibold whitespace-nowrap">${escapeHtml(inv.office)}</td>
             <td class="py-3 px-3 text-xs font-mono text-slate-600 whitespace-nowrap" dir="ltr">${escapeHtml(inv.deliveryDate || '-')}</td>
@@ -698,7 +706,7 @@ export function initPlatformEngine(onFatalError?: (err: Error) => void): () => v
               ${
                 photos.length
                   ? `
-                <button onclick="openInvoicePhotosLightbox('${escapeHtml(inv.id)}')" class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-sky-50 hover:bg-sky-100 text-sky-700 text-xs font-bold">
+                <button onclick="openInvoicePhotosLightbox('${escapeHtml(inv.id)}')" class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-se-light-blue/20 hover:bg-se-light-blue/30 text-se-mid-blue text-xs font-bold">
                   <i data-lucide="image" class="w-3.5 h-3.5"></i>
                   <span>${photos.length} صورة</span>
                 </button>
@@ -714,11 +722,11 @@ export function initPlatformEngine(onFatalError?: (err: Error) => void): () => v
               ${
                 canResubmit
                   ? `
-                <button onclick="editContractorInvoice('${escapeHtml(inv.id)}')" class="px-3 py-1.5 rounded-lg bg-accent-50 hover:bg-accent-500 text-accent-700 hover:text-white text-xs font-bold transition">
+                <button onclick="editContractorInvoice('${escapeHtml(inv.id)}')" class="px-3 py-1.5 rounded-lg bg-se-mid-blue/20 hover:bg-se-mid-blue/200 text-se-blue hover:text-white text-xs font-bold transition">
                   ${inv.status === 'مرفوض' || inv.status === 'ملاحظات معلقة' ? 'تعديل وإعادة إرسال' : 'تعديل'}
                 </button>
               `
-                  : '<span class="text-xs text-emerald-600 font-bold">مكتملة</span>'
+                  : '<span class="text-xs text-se-tertiary-green font-bold">مكتملة</span>'
               }
             </td>
           </tr>
@@ -900,7 +908,7 @@ export function initPlatformEngine(onFatalError?: (err: Error) => void): () => v
           });
         }
         const safeName = `${Date.now()}_${file.name.replace(/[^\w.\-\u0600-\u06FF]/g, '_')}`;
-        const oneDrivePath = `${appState.oneDrive.baseFolder}/${currentSession.name}/${wo}/${safeName}`;
+        const oneDrivePath = `${appState.dropbox.baseFolder}/${currentSession.name}/${wo}/${safeName}`;
         pendingPhotos.push({ name: safeName, stage, dataUrl, oneDrivePath, synced: false });
         processed++;
       } catch {
@@ -928,14 +936,14 @@ export function initPlatformEngine(onFatalError?: (err: Error) => void): () => v
         ${isImage
           ? `<img src="${p.dataUrl}" onclick="openPendingPhotoLightbox(${idx})" class="w-full h-28 object-cover cursor-pointer" />`
           : `<div onclick="openPendingPhotoLightbox(${idx})" class="w-full h-28 bg-slate-100 flex flex-col items-center justify-center p-2 cursor-pointer text-center">
-               <span class="px-2.5 py-1 rounded-lg bg-accent-100 text-accent-700 font-black text-xs mb-1">${ext}</span>
+               <span class="px-2.5 py-1 rounded-lg bg-accent-100 text-se-blue font-black text-xs mb-1">${ext}</span>
                <span class="text-[10px] text-slate-600 truncate max-w-full px-1">${escapeHtml(p.name)}</span>
              </div>`
         }
         <div class="p-2 text-[11px]">
-          <div class="font-bold text-navy-900 truncate">${escapeHtml(p.stage)}</div>
-          <div class="text-[10px] ${p.synced ? 'text-emerald-600' : 'text-sky-600'} font-bold truncate">
-            ${p.synced ? 'مرفوع على OneDrive ✓' : 'جاهز للمزامنة مع OneDrive'}
+          <div class="font-bold text-se-dark-blue truncate">${escapeHtml(p.stage)}</div>
+          <div class="text-[10px] ${p.synced ? 'text-se-tertiary-green' : 'text-blue-600'} font-bold truncate">
+            ${p.synced ? 'مرفوع على Dropbox ✓' : 'جاهز للمزامنة مع Dropbox'}
           </div>
         </div>
         <button type="button" onclick="removePendingPhoto(${idx})" class="absolute top-1.5 left-1.5 w-6 h-6 rounded-full bg-rose-600 text-white text-xs font-bold flex items-center justify-center shadow">✕</button>
@@ -968,17 +976,17 @@ export function initPlatformEngine(onFatalError?: (err: Error) => void): () => v
       if (k) checklist[k] = cb.checked;
     });
 
-    if (appState.oneDrive.accessToken && pendingPhotos.length) {
+    if (appState.dropbox.accessToken && pendingPhotos.length) {
       for (const p of pendingPhotos) {
         if (!p.synced) {
-          p.oneDrivePath = `${appState.oneDrive.baseFolder}/${currentSession.name}/${wo}/${p.name}`;
-          const uploaded = await uploadSinglePhotoToOneDrive(p);
-          if (uploaded) p.synced = true;
+          p.oneDrivePath = `${appState.dropbox.baseFolder}/${currentSession.name}/${wo}/${p.name}`;
+          const uploaded = await uploadSinglePhotoToOneDrive(p, currentSession.name, wo);
+          if (uploaded.success) p.synced = true;
         }
       }
     } else {
       pendingPhotos.forEach((p) => {
-        p.oneDrivePath = `${appState.oneDrive.baseFolder}/${currentSession!.name}/${wo}/${p.name}`;
+        p.oneDrivePath = `${appState.dropbox.baseFolder}/${currentSession!.name}/${wo}/${p.name}`;
       });
     }
 
@@ -1084,7 +1092,7 @@ export function initPlatformEngine(onFatalError?: (err: Error) => void): () => v
       invoices: 'سجل ومراجعة فواتير الصيانة والطوارئ',
       reports: 'مركز التقارير والتصدير الشامل',
       users: 'إدارة الصلاحيات والمستخدمين وسجل التدقيق',
-      onedrive: 'الربط السحابي مع Microsoft OneDrive',
+      onedrive: 'الأرشفة السحابية مع Dropbox',
     };
     const titleEl = $('staffSectionTitle');
     if (titleEl) titleEl.textContent = titles[sec] || '';
@@ -1094,7 +1102,7 @@ export function initPlatformEngine(onFatalError?: (err: Error) => void): () => v
     document.querySelectorAll<HTMLElement>('.staff-nav-btn').forEach((btn) => {
       const active = btn.dataset.sec === sec;
       btn.className = active
-        ? 'staff-nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition bg-accent-500 text-white shadow'
+        ? 'staff-nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition bg-se-mid-blue text-white shadow'
         : 'staff-nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition text-slate-300 hover:bg-white/10 hover:text-white';
     });
     toggleMobileSidebar(false);
@@ -1184,20 +1192,20 @@ export function initPlatformEngine(onFatalError?: (err: Error) => void): () => v
         const sla = getInvoiceSlaInfo(inv);
         return `
           <tr class="hover:bg-slate-50 transition">
-            <td class="py-3 px-2.5"><input type="checkbox" ${checked} onchange="toggleSingleInvSelect('${escapeHtml(inv.id)}', this.checked)" class="w-4 h-4 accent-accent-500 rounded" /></td>
-            <td class="py-3 px-2.5 font-mono font-extrabold text-navy-900 whitespace-nowrap" dir="ltr">${escapeHtml(inv.wo)}</td>
-            <td class="py-3 px-2.5 font-bold text-navy-900 whitespace-nowrap">${escapeHtml(inv.contractor)}</td>
+            <td class="py-3 px-2.5"><input type="checkbox" ${checked} onchange="toggleSingleInvSelect('${escapeHtml(inv.id)}', this.checked)" class="w-4 h-4 accent-se-mid-blue rounded" /></td>
+            <td class="py-3 px-2.5 font-mono font-extrabold text-se-dark-blue whitespace-nowrap" dir="ltr">${escapeHtml(inv.wo)}</td>
+            <td class="py-3 px-2.5 font-bold text-se-dark-blue whitespace-nowrap">${escapeHtml(inv.contractor)}</td>
             <td class="py-3 px-2.5 text-slate-600 whitespace-nowrap">${escapeHtml(inv.consultant)}</td>
             <td class="py-3 px-2.5 font-mono text-xs text-slate-600 whitespace-nowrap" dir="ltr">${escapeHtml(inv.invoiceDate || '-')}</td>
             <td class="py-3 px-2.5 whitespace-nowrap">
-              <span class="px-2 py-0.5 rounded-md bg-navy-50 text-navy-800 text-[11px] font-bold">${escapeHtml(inv.workType)}</span>
+              <span class="px-2 py-0.5 rounded-md bg-se-navy-50 text-se-blue text-[11px] font-bold">${escapeHtml(inv.workType)}</span>
             </td>
             <td class="py-3 px-2.5 text-xs font-semibold text-slate-700 min-w-[140px]">${escapeHtml(inv.workDesc)}</td>
-            <td class="py-3 px-2.5 font-bold text-xs text-navy-800 whitespace-nowrap">${escapeHtml(inv.equipType)}</td>
+            <td class="py-3 px-2.5 font-bold text-xs text-se-blue whitespace-nowrap">${escapeHtml(inv.equipType)}</td>
             <td class="py-3 px-2.5 font-mono text-[11px] text-slate-600 whitespace-nowrap" dir="ltr">${escapeHtml(inv.funcLoc || '-')}</td>
             <td class="py-3 px-2.5 font-semibold whitespace-nowrap">${escapeHtml(inv.office)}</td>
             <td class="py-3 px-2.5 font-mono text-xs text-slate-600 whitespace-nowrap" dir="ltr">${escapeHtml(inv.deliveryDate || '-')}</td>
-            <td class="py-3 px-2.5 text-xs font-extrabold whitespace-nowrap ${sla.reviewed ? 'text-slate-400' : 'text-navy-900'}">${escapeHtml(sla.daysText)}</td>
+            <td class="py-3 px-2.5 text-xs font-extrabold whitespace-nowrap ${sla.reviewed ? 'text-slate-400' : 'text-se-dark-blue'}">${escapeHtml(sla.daysText)}</td>
             <td class="py-3 px-2.5 whitespace-nowrap">
               <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-extrabold border ${sla.badgeClass}">${escapeHtml(sla.category)}</span>
             </td>
@@ -1216,11 +1224,11 @@ export function initPlatformEngine(onFatalError?: (err: Error) => void): () => v
             </td>
             <td class="py-3 px-2.5 whitespace-nowrap">
               <div class="flex items-center justify-center gap-1">
-                <button onclick="openReviewModal('${escapeHtml(inv.id)}')" title="مراجعة واعتماد" class="px-2.5 py-1.5 rounded-lg bg-navy-900 hover:bg-accent-500 text-white text-[11px] font-bold transition">مراجعة</button>
+                <button onclick="openReviewModal('${escapeHtml(inv.id)}')" title="مراجعة واعتماد" class="px-2.5 py-1.5 rounded-lg bg-navy-900 hover:bg-se-mid-blue/200 text-white text-[11px] font-bold transition">مراجعة</button>
                 ${
                   !isViewer
                     ? `
-                  <button onclick="openStaffInvoiceModal('${escapeHtml(inv.id)}')" title="تعديل" class="p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-navy-900"><i data-lucide="edit-3" class="w-3.5 h-3.5"></i></button>
+                  <button onclick="openStaffInvoiceModal('${escapeHtml(inv.id)}')" title="تعديل" class="p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-se-dark-blue"><i data-lucide="edit-3" class="w-3.5 h-3.5"></i></button>
                   <button onclick="deleteInvoice('${escapeHtml(inv.id)}')" title="حذف" class="p-1.5 rounded-lg bg-rose-50 hover:bg-rose-600 text-rose-600 hover:text-white transition"><i data-lucide="trash-2" class="w-3.5 h-3.5"></i></button>
                 `
                     : ''
@@ -1309,7 +1317,7 @@ export function initPlatformEngine(onFatalError?: (err: Error) => void): () => v
           ([k, v]) => `
         <div class="p-2.5 rounded-xl bg-slate-50 border border-slate-200/80">
           <div class="text-[11px] text-slate-500 font-semibold">${k}</div>
-          <div class="text-xs font-extrabold text-navy-900 mt-0.5">${escapeHtml(v)}</div>
+          <div class="text-xs font-extrabold text-se-dark-blue mt-0.5">${escapeHtml(v)}</div>
         </div>
       `
         )
@@ -1327,12 +1335,12 @@ export function initPlatformEngine(onFatalError?: (err: Error) => void): () => v
     const ckBox = $('rmChecklistBox');
     if (ckBox) {
       ckBox.innerHTML = `
-        <div class="text-xs font-extrabold text-navy-900 mb-2">التزام المقاول بقائمة التحقق قبل الرفع:</div>
+        <div class="text-xs font-extrabold text-se-dark-blue mb-2">التزام المقاول بقائمة التحقق قبل الرفع:</div>
         <div class="flex flex-wrap gap-2">
           ${ckLabels
             .map(
               ([k, lbl]) => `
-            <span class="px-2.5 py-1 rounded-full text-[11px] font-bold ${ck[k] ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-700'}">
+            <span class="px-2.5 py-1 rounded-full text-[11px] font-bold ${ck[k] ? 'bg-emerald-100 text-emerald-800' : 'bg-se-tertiary-red/20 text-se-tertiary-red'}">
               ${ck[k] ? '✓' : '✕'} ${lbl}
             </span>
           `
@@ -1353,7 +1361,7 @@ export function initPlatformEngine(onFatalError?: (err: Error) => void): () => v
           <img src="${p.dataUrl}" onclick="openReviewPhotoLightbox('${escapeHtml(inv.id)}', ${idx})"
             class="w-full h-24 object-cover cursor-pointer hover:opacity-90 transition" />
           <div class="p-2 text-[10px]">
-            <div class="font-bold text-navy-900 truncate">${escapeHtml(p.stage || 'مرفق')}</div>
+            <div class="font-bold text-se-dark-blue truncate">${escapeHtml(p.stage || 'مرفق')}</div>
             <div class="text-sky-700 truncate font-mono" dir="ltr" title="${escapeHtml(p.oneDrivePath)}">${p.synced ? 'OneDrive ✓' : 'أرشفة محلية'}</div>
           </div>
         </div>
@@ -1520,14 +1528,14 @@ export function initPlatformEngine(onFatalError?: (err: Error) => void): () => v
         .map(
           (c) => `
         <tr class="hover:bg-slate-50">
-          <td class="py-2.5 px-4 font-bold text-navy-900">${escapeHtml(c.name)}</td>
+          <td class="py-2.5 px-4 font-bold text-se-dark-blue">${escapeHtml(c.name)}</td>
           <td class="py-2.5 px-3 font-mono font-bold text-slate-600">${escapeHtml(c.pin)}</td>
           <td class="py-2.5 px-3">
-            <span class="px-2 py-0.5 rounded-full text-[11px] font-bold ${c.active ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-700'}">${c.active ? 'نشط' : 'موقوف'}</span>
+            <span class="px-2 py-0.5 rounded-full text-[11px] font-bold ${c.active ? 'bg-emerald-100 text-emerald-800' : 'bg-se-tertiary-red/20 text-se-tertiary-red'}">${c.active ? 'نشط' : 'موقوف'}</span>
           </td>
           <td class="py-2.5 px-3 text-center whitespace-nowrap">
-            <button onclick="changeContractorPin('${escapeHtml(c.id)}')" class="text-navy-900 hover:text-accent-600 font-bold ml-2">تعديل PIN</button>
-            <button onclick="toggleContractorActive('${escapeHtml(c.id)}')" class="text-xs font-bold ${c.active ? 'text-rose-600' : 'text-emerald-600'} hover:underline">${c.active ? 'إيقاف' : 'تفعيل'}</button>
+            <button onclick="changeContractorPin('${escapeHtml(c.id)}')" class="text-se-dark-blue hover:text-se-mid-blue font-bold ml-2">تعديل PIN</button>
+            <button onclick="toggleContractorActive('${escapeHtml(c.id)}')" class="text-xs font-bold ${c.active ? 'text-rose-600' : 'text-se-tertiary-green'} hover:underline">${c.active ? 'إيقاف' : 'تفعيل'}</button>
           </td>
         </tr>
       `
@@ -1548,7 +1556,7 @@ export function initPlatformEngine(onFatalError?: (err: Error) => void): () => v
             ${
               u.username !== '100889'
                 ? `
-              <select onchange="changeStaffRole('${escapeHtml(u.username)}', this.value)" class="rounded-lg border border-slate-300 bg-white py-1 px-2 text-xs font-bold text-navy-900 outline-none focus:border-accent-500">
+              <select onchange="changeStaffRole('${escapeHtml(u.username)}', this.value)" class="rounded-lg border border-slate-300 bg-white py-1 px-2 text-xs font-bold text-se-dark-blue outline-none focus:border-accent-500">
                 <option value="admin" ${u.role === 'admin' ? 'selected' : ''}>مدير نظام (كامل)</option>
                 <option value="reviewer" ${u.role === 'reviewer' ? 'selected' : ''}>موظف شركة (مراجعة واعتماد)</option>
                 <option value="viewer" ${u.role === 'viewer' ? 'selected' : ''}>مراقب (عرض وتقارير)</option>
@@ -1574,8 +1582,8 @@ export function initPlatformEngine(onFatalError?: (err: Error) => void): () => v
           (l) => `
         <tr class="hover:bg-slate-50">
           <td class="py-2 px-4 font-mono text-slate-500 whitespace-nowrap">${escapeHtml(l.time)}</td>
-          <td class="py-2 px-4 font-bold text-navy-900">${escapeHtml(l.user)}</td>
-          <td class="py-2 px-4"><span class="px-2 py-0.5 rounded-md bg-accent-50 text-accent-700 font-bold">${escapeHtml(l.action)}</span></td>
+          <td class="py-2 px-4 font-bold text-se-dark-blue">${escapeHtml(l.user)}</td>
+          <td class="py-2 px-4"><span class="px-2 py-0.5 rounded-md bg-se-mid-blue/20 text-se-blue font-bold">${escapeHtml(l.action)}</span></td>
           <td class="py-2 px-4 text-slate-600">${escapeHtml(l.details)}</td>
         </tr>
       `
@@ -1717,43 +1725,173 @@ export function initPlatformEngine(onFatalError?: (err: Error) => void): () => v
     }
   }
 
-  // ==================== ONEDRIVE INTEGRATION ====================
-  function renderOneDriveModule(): void {
+  // ==================== DROPBOX INTEGRATION & AUTO-REFRESH ====================
+  const DROPBOX_TOKEN_CACHE_MS = 2 * 60 * 60 * 1000; // 2 hours
+  let dropboxRefreshTimer: ReturnType<typeof setTimeout> | null = null;
+
+  async function getValidDropboxToken(forceRefresh = false): Promise<string> {
+    const cfg = appState.dropbox;
+    const appKey = (cfg.clientId || '').trim();
+    const appSecret = (cfg.appSecret || '').trim();
+    const refreshToken = (cfg.refreshToken || '').trim();
+    const cachedToken = (cfg.accessToken || '').trim();
+    const expiresAt = Number(cfg.tokenExpiresAt || 0);
+
+    // Use cached token if still valid within the 2-hour window
+    if (!forceRefresh && cachedToken && expiresAt > Date.now()) {
+      return cachedToken;
+    }
+
+    // Auto-refresh via Dropbox OAuth2 Token Refresh API
+    if (refreshToken && appKey && appSecret) {
+      try {
+        const body = new URLSearchParams({
+          grant_type: 'refresh_token',
+          refresh_token: refreshToken,
+          client_id: appKey,
+          client_secret: appSecret,
+        });
+        const res = await fetch('https://api.dropboxapi.com/oauth2/token', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body,
+        });
+        if (!res.ok) {
+          const errTxt = await res.text().catch(() => '');
+          throw new Error(`HTTP ${res.status}: ${errTxt}`);
+        }
+        const data = (await res.json()) as { access_token?: string; expires_in?: number };
+        if (data && data.access_token) {
+          appState.dropbox.accessToken = data.access_token;
+          const ttl = data.expires_in ? data.expires_in * 1000 : DROPBOX_TOKEN_CACHE_MS;
+          appState.dropbox.tokenExpiresAt = Date.now() + ttl;
+          setLocalDropboxToken(data.access_token);
+          const tokenInp = $<HTMLInputElement>('odAccessToken');
+          if (tokenInp) tokenInp.value = data.access_token;
+          updateDropboxExpiryHint();
+          updateDropboxBadges();
+          return data.access_token;
+        }
+      } catch (err) {
+        console.warn('Dropbox token auto-refresh failed:', err);
+        if (forceRefresh) throw err;
+      }
+    }
+
+    return cachedToken || '';
+  }
+
+  function scheduleDropboxTokenRefresh(): void {
+    if (dropboxRefreshTimer) clearTimeout(dropboxRefreshTimer);
+    const cfg = appState.dropbox;
+    if (!cfg.refreshToken || !cfg.clientId || !cfg.appSecret) return;
+
+    const now = Date.now();
+    const expiresAt = cfg.tokenExpiresAt || 0;
+    // Refresh 5 minutes before expiration or immediately if expired/unknown
+    let msUntilRefresh = expiresAt > now ? expiresAt - now - 5 * 60 * 1000 : 0;
+    if (msUntilRefresh <= 0) msUntilRefresh = 1500;
+
+    dropboxRefreshTimer = setTimeout(async () => {
+      if (destroyed) return;
+      try {
+        await getValidDropboxToken(true);
+        console.log('Dropbox access token auto-refreshed successfully at scheduled interval');
+      } catch (e) {
+        console.warn('Scheduled Dropbox token refresh error:', e);
+      }
+      scheduleDropboxTokenRefresh();
+    }, msUntilRefresh);
+  }
+
+  function updateDropboxExpiryHint(): void {
+    const hintEl = $('odTokenExpiryHint');
+    if (!hintEl) return;
+    const cfg = appState.dropbox;
+    const hasAutoRefresh = Boolean(cfg.refreshToken && cfg.clientId && cfg.appSecret);
+    if (hasAutoRefresh && cfg.tokenExpiresAt > Date.now()) {
+      const until = new Date(cfg.tokenExpiresAt).toLocaleTimeString('ar-SA', {
+        hour: '2-digit',
+        minute: '2-digit',
+      });
+      hintEl.textContent = `التوكن المؤقت صالح حتى ${until}، وسيتم تجديده تلقائياً كل ساعتين عبر مجدول الخلفية.`;
+    } else if (hasAutoRefresh) {
+      hintEl.textContent = 'سيتم جلب وتجديد Access Token تلقائياً قبل أول عملية رفع أو فحص اتصال.';
+    } else {
+      hintEl.textContent = 'أدخل App Key و App Secret و Refresh Token لتفعيل التجديد التلقائي الدائم كل ساعتين.';
+    }
+  }
+
+  function renderDropboxModule(): void {
     const setVal = (id: string, val: string) => {
       const el = $<HTMLInputElement>(id);
       if (el) el.value = val;
     };
-    setVal('odClientId', appState.oneDrive.clientId || '');
-    setVal('odTenantId', appState.oneDrive.tenantId || 'common');
-    setVal('odBaseFolder', appState.oneDrive.baseFolder || '/فواتير_الصيانة_والطوارئ');
-    setVal('odAccessToken', appState.oneDrive.accessToken || '');
-    updateOneDriveBadges();
+    setVal('odClientId', appState.dropbox.clientId || '');
+    setVal('odAppSecret', appState.dropbox.appSecret || '');
+    setVal('odRefreshToken', appState.dropbox.refreshToken || '');
+    setVal('odBaseFolder', appState.dropbox.baseFolder || '/Apps/Invoice Tracker – Asset Receiving');
+    setVal('odAccessToken', appState.dropbox.accessToken || '');
+    updateDropboxBadges();
+    updateDropboxExpiryHint();
 
-    const tree: Record<string, Record<string, InvoicePhoto[]>> = {};
+    const tree: Record<string, Record<string, { photos: InvoicePhoto[]; hasCard: boolean }>> = {};
     let totalPhotos = 0;
-    appState.invoices.forEach((inv) => {
-      if (inv.photos && inv.photos.length) {
-        if (!tree[inv.contractor]) tree[inv.contractor] = {};
-        tree[inv.contractor][inv.wo] = inv.photos;
-        totalPhotos += inv.photos.length;
-      }
+    let totalWos = 0;
+
+    // Gather all unique contractors from both contractor list and invoices
+    const allContractors = new Set<string>();
+    appState.contractors.forEach((c) => {
+      if (c.name && c.name.trim()) allContractors.add(c.name.trim());
     });
+    appState.invoices.forEach((inv) => {
+      if (inv.contractor && inv.contractor.trim()) allContractors.add(inv.contractor.trim());
+    });
+
+    allContractors.forEach((c) => {
+      tree[c] = {};
+    });
+
+    appState.invoices.forEach((inv) => {
+      const c = inv.contractor?.trim() || 'عام';
+      if (!tree[c]) tree[c] = {};
+      tree[c][inv.wo] = {
+        photos: inv.photos || [],
+        hasCard: true,
+      };
+      totalWos++;
+      totalPhotos += (inv.photos || []).length;
+    });
+
     const totalEl = $('odTotalPhotosCount');
     if (totalEl) totalEl.textContent = String(totalPhotos);
+    const totalWosEl = $('odTotalWosCount');
+    if (totalWosEl) totalWosEl.textContent = String(totalWos);
 
-    const lines = [`📁 OneDrive${appState.oneDrive.baseFolder}`];
+    const base = appState.dropbox.baseFolder || '/Apps/Invoice Tracker – Asset Receiving';
+    const lines = [`📁 Dropbox: ${base}`];
     Object.entries(tree)
-      .slice(0, 6)
+      .slice(0, 10)
       .forEach(([contractor, wos]) => {
         lines.push(`  ├─ 📂 ${contractor}`);
-        Object.entries(wos)
-          .slice(0, 3)
-          .forEach(([wo, photos]) => {
+        const woEntries = Object.entries(wos);
+        if (woEntries.length === 0) {
+          lines.push(`  │   └─ 📄 بيانات_المقاول.txt`);
+        } else {
+          woEntries.slice(0, 5).forEach(([wo, data]) => {
             lines.push(`  │   ├─ 📂 ${wo}`);
-            photos.forEach((p) => {
-              lines.push(`  │   │   └─ 🖼️ ${p.name} ${p.synced ? '[Synced ✓]' : '[Local]'}`);
+            lines.push(`  │   │   ├─ 📄 بطاقة_أمر_العمل_${wo}.txt`);
+            data.photos.slice(0, 3).forEach((p) => {
+              lines.push(`  │   │   └─ 🖼️ ${p.name} ${p.synced ? '[مؤرشفة ✓]' : '[محلي]'}`);
             });
+            if (data.photos.length > 3) {
+              lines.push(`  │   │   └─ ... +${data.photos.length - 3} صور إضافية`);
+            }
           });
+          if (woEntries.length > 5) {
+            lines.push(`  │   └─ ... +${woEntries.length - 5} أوامر عمل إضافية`);
+          }
+        }
       });
     const preview = $('odFolderTreePreview');
     if (preview) {
@@ -1761,147 +1899,538 @@ export function initPlatformEngine(onFatalError?: (err: Error) => void): () => v
     }
   }
 
-  function updateOneDriveBadges(): void {
-    const connected = !!(appState.oneDrive.accessToken && appState.oneDrive.connectedUser);
+  function updateDropboxBadges(): void {
+    const cfg = appState.dropbox;
+    const hasAutoRefresh = Boolean(cfg.refreshToken && cfg.clientId && cfg.appSecret);
     const odBadge = $('odStatusBadge');
     if (odBadge) {
-      odBadge.textContent = connected ? `متصل (${appState.oneDrive.connectedUser})` : 'غير متصل';
-      odBadge.className = connected
-        ? 'text-xs font-extrabold px-3 py-1 rounded-full bg-emerald-100 text-emerald-800'
-        : 'text-xs font-extrabold px-3 py-1 rounded-full bg-amber-100 text-amber-800';
+      if (cfg.connectedUser) {
+        odBadge.textContent = `متصل (${cfg.connectedUser})`;
+        odBadge.className = 'text-xs font-extrabold px-3 py-1 rounded-full bg-emerald-100 text-emerald-800';
+      } else if (hasAutoRefresh) {
+        odBadge.textContent = 'التجديد التلقائي مفعّل';
+        odBadge.className = 'text-xs font-extrabold px-3 py-1 rounded-full bg-blue-100 text-blue-800';
+      } else if (cfg.accessToken) {
+        odBadge.textContent = 'رمز وصول مؤقت';
+        odBadge.className = 'text-xs font-extrabold px-3 py-1 rounded-full bg-amber-100 text-amber-800';
+      } else {
+        odBadge.textContent = 'غير مرتبط حالياً';
+        odBadge.className = 'text-xs font-extrabold px-3 py-1 rounded-full bg-slate-100 text-slate-600';
+      }
     }
     refreshLucideIcons();
   }
 
-  async function saveOneDriveConfig(): Promise<void> {
-    appState.oneDrive.clientId = ($<HTMLInputElement>('odClientId')?.value || '').trim();
-    appState.oneDrive.tenantId = ($<HTMLInputElement>('odTenantId')?.value || '').trim() || 'common';
-    appState.oneDrive.baseFolder =
-      ($<HTMLInputElement>('odBaseFolder')?.value || '').trim() || '/فواتير_الصيانة_والطوارئ';
-    appState.oneDrive.accessToken = ($<HTMLInputElement>('odAccessToken')?.value || '').trim();
+  async function saveDropboxConfig(): Promise<void> {
+    const newClientId = ($<HTMLInputElement>('odClientId')?.value || '').trim();
+    const newAppSecret = ($<HTMLInputElement>('odAppSecret')?.value || '').trim();
+    const newRefreshToken = ($<HTMLInputElement>('odRefreshToken')?.value || '').trim();
+    const newBaseFolder =
+      ($<HTMLInputElement>('odBaseFolder')?.value || '').trim() || '/Apps/Invoice Tracker – Asset Receiving';
+    const newAccessToken = ($<HTMLInputElement>('odAccessToken')?.value || '').trim();
 
-    // Keep token strictly in browser localStorage; never send secrets to Firestore
-    setLocalOneDriveToken(appState.oneDrive.accessToken);
+    const credsChanged =
+      newClientId !== appState.dropbox.clientId ||
+      newAppSecret !== appState.dropbox.appSecret ||
+      newRefreshToken !== appState.dropbox.refreshToken;
+
+    appState.dropbox.clientId = newClientId;
+    appState.dropbox.appSecret = newAppSecret;
+    appState.dropbox.refreshToken = newRefreshToken;
+    appState.dropbox.baseFolder = newBaseFolder;
+    if (newAccessToken) appState.dropbox.accessToken = newAccessToken;
+    if (credsChanged) appState.dropbox.tokenExpiresAt = 0;
+
+    setLocalDropboxToken(appState.dropbox.accessToken);
+
     try {
       await fsSaveOneDriveSettings({
-        clientId: appState.oneDrive.clientId,
-        tenantId: appState.oneDrive.tenantId,
-        baseFolder: appState.oneDrive.baseFolder,
-        connectedUser: appState.oneDrive.connectedUser,
+        clientId: appState.dropbox.clientId,
+        appSecret: appState.dropbox.appSecret,
+        refreshToken: appState.dropbox.refreshToken,
+        accessToken: appState.dropbox.accessToken,
+        tokenExpiresAt: appState.dropbox.tokenExpiresAt,
+        tenantId: 'dropbox',
+        baseFolder: appState.dropbox.baseFolder,
+        connectedUser: appState.dropbox.connectedUser,
         updatedAt: new Date().toISOString(),
       });
-      renderOneDriveModule();
-      showToast('تم حفظ إعدادات OneDrive بنجاح', 'success');
+
+      if (appState.dropbox.refreshToken && appState.dropbox.clientId && appState.dropbox.appSecret) {
+        await getValidDropboxToken(true).catch(() => {});
+        scheduleDropboxTokenRefresh();
+      }
+
+      renderDropboxModule();
+      showToast('تم حفظ إعدادات Dropbox في قاعدة بيانات Firebase بنجاح ✓', 'success');
+      logAudit('حفظ إعدادات Dropbox', `تم تحديث المجلد: ${appState.dropbox.baseFolder}`);
     } catch {
-      showToast('تعذر حفظ إعدادات OneDrive في Firestore', 'error');
+      showToast('تعذر حفظ إعدادات Dropbox في Firebase', 'error');
     }
   }
 
-  function connectOneDriveOAuth(): void {
-    void saveOneDriveConfig();
-    if (!appState.oneDrive.clientId) {
-      showToast('يرجى إدخال Client ID الخاص بتطبيق Azure أولاً (أو لصق Access Token مباشرة)', 'warning');
+  async function testDropboxConnection(): Promise<void> {
+    appState.dropbox.clientId = ($<HTMLInputElement>('odClientId')?.value || '').trim();
+    appState.dropbox.appSecret = ($<HTMLInputElement>('odAppSecret')?.value || '').trim();
+    appState.dropbox.refreshToken = ($<HTMLInputElement>('odRefreshToken')?.value || '').trim();
+    appState.dropbox.baseFolder =
+      ($<HTMLInputElement>('odBaseFolder')?.value || '').trim() || '/Apps/Invoice Tracker – Asset Receiving';
+    appState.dropbox.accessToken = ($<HTMLInputElement>('odAccessToken')?.value || '').trim();
+
+    const hasRefresh = Boolean(
+      appState.dropbox.refreshToken && appState.dropbox.clientId && appState.dropbox.appSecret
+    );
+    if (!hasRefresh && !appState.dropbox.accessToken) {
+      showToast('يرجى إدخال (App Key + App Secret + Refresh Token) أو Access Token أولاً', 'warning');
       return;
     }
-    const redirectUri = window.location.origin + window.location.pathname;
-    const scope = encodeURIComponent('Files.ReadWrite User.Read');
-    const authUrl = `https://login.microsoftonline.com/${encodeURIComponent(appState.oneDrive.tenantId)}/oauth2/v2.0/authorize?client_id=${encodeURIComponent(appState.oneDrive.clientId)}&response_type=token&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${scope}`;
-    const a = document.createElement('a');
-    a.href = authUrl;
-    a.target = '_blank';
-    a.rel = 'noopener noreferrer';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    showToast('تم توجيهك لصفحة تسجيل الدخول إلى Microsoft OneDrive', 'info');
-  }
 
-  async function verifyOneDriveToken(): Promise<void> {
-    await saveOneDriveConfig();
-    if (!appState.oneDrive.accessToken) {
-      showToast('لا يوجد رمز وصول (Access Token) لفحصه حالياً', 'warning');
-      return;
-    }
+    showToast('جاري تجديد التوكن وفحص الاتصال بحساب Dropbox...', 'info');
+
     try {
-      const res = await fetch('https://graph.microsoft.com/v1.0/me/drive', {
-        headers: { Authorization: `Bearer ${appState.oneDrive.accessToken}` },
+      const token = await getValidDropboxToken(hasRefresh);
+      if (!token) throw new Error('تعذر الحصول على توكن صالح');
+
+      const res = await fetch('https://api.dropboxapi.com/2/users/get_current_account', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
       });
-      if (!res.ok) throw new Error('Unauthorized');
-      const info = await res.json();
-      appState.oneDrive.connectedUser = info.owner?.user?.displayName || 'حساب OneDrive';
+      if (!res.ok) throw new Error('رمز الوصول غير صالح');
+      const info = (await res.json()) as { name?: { display_name?: string }; email?: string };
+      appState.dropbox.connectedUser = info.name?.display_name || info.email || 'متصل بـ Dropbox';
+
       await fsSaveOneDriveSettings({
-        clientId: appState.oneDrive.clientId,
-        tenantId: appState.oneDrive.tenantId,
-        baseFolder: appState.oneDrive.baseFolder,
-        connectedUser: appState.oneDrive.connectedUser,
+        clientId: appState.dropbox.clientId,
+        appSecret: appState.dropbox.appSecret,
+        refreshToken: appState.dropbox.refreshToken,
+        accessToken: appState.dropbox.accessToken,
+        tokenExpiresAt: appState.dropbox.tokenExpiresAt,
+        tenantId: 'dropbox',
+        baseFolder: appState.dropbox.baseFolder,
+        connectedUser: appState.dropbox.connectedUser,
         updatedAt: new Date().toISOString(),
       });
-      updateOneDriveBadges();
-      logAudit('ربط OneDrive', `تم التحقق من الاتصال بحساب: ${appState.oneDrive.connectedUser}`);
-      showToast(`تم الاتصال بنجاح بحساب OneDrive: ${appState.oneDrive.connectedUser}`, 'success');
+
+      scheduleDropboxTokenRefresh();
+      renderDropboxModule();
+      logAudit('اتصال Dropbox', `تم التحقق بنجاح من حساب: ${appState.dropbox.connectedUser}`);
+      showToast(
+        hasRefresh
+          ? `تم تجديد التوكن تلقائياً والاتصال بحساب: ${appState.dropbox.connectedUser} ✓`
+          : `تم الاتصال بحساب Dropbox: ${appState.dropbox.connectedUser} ✓`,
+        'success'
+      );
     } catch {
-      appState.oneDrive.connectedUser = '';
-      await fsSaveOneDriveSettings({
-        clientId: appState.oneDrive.clientId,
-        tenantId: appState.oneDrive.tenantId,
-        baseFolder: appState.oneDrive.baseFolder,
-        connectedUser: '',
-        updatedAt: new Date().toISOString(),
-      });
-      updateOneDriveBadges();
-      showToast('فشل التحقق من الاتصال: تأكد من صلاحية Access Token', 'error');
+      appState.dropbox.connectedUser = '';
+      updateDropboxBadges();
+      showToast('تعذر الاتصال أو تجديد التوكن: تأكد من صحة App Key و App Secret و Refresh Token', 'error');
     }
   }
 
-  async function uploadSinglePhotoToOneDrive(photo: InvoicePhoto): Promise<boolean> {
-    if (!appState.oneDrive.accessToken) return false;
+  function asciiDropboxArg(obj: Record<string, unknown>): string {
+    return JSON.stringify(obj).replace(/[\u007f-\uffff]/g, (c) => {
+      return '\\u' + ('0000' + c.charCodeAt(0).toString(16)).slice(-4);
+    });
+  }
+
+  function cleanDropboxBasePath(raw: string): string {
+    let s = String(raw || '').trim().replace(/\\/g, '/');
+    s = s.split('/').map((seg) => seg.trim()).filter(Boolean).join('/');
+    return s ? '/' + s : '/Apps/Invoice Tracker – Asset Receiving';
+  }
+
+  async function dataUrlToBlob(dataUrl: string): Promise<Blob> {
     try {
-      const blob = await (await fetch(photo.dataUrl)).blob();
-      const cleanPath = photo.oneDrivePath.replace(/^\/+/, '');
-      const url = `https://graph.microsoft.com/v1.0/me/drive/root:/${encodeURI(cleanPath)}:/content`;
-      const res = await fetch(url, {
-        method: 'PUT',
+      const res = await fetch(dataUrl);
+      return await res.blob();
+    } catch {
+      const parts = dataUrl.split(',');
+      const mime = parts[0].match(/:(.*?);/)?.[1] || 'image/jpeg';
+      if (parts[0].includes('base64')) {
+        const bstr = atob(parts[1]);
+        let n = bstr.length;
+        const u8arr = new Uint8Array(n);
+        while (n--) {
+          u8arr[n] = bstr.charCodeAt(n);
+        }
+        return new Blob([u8arr], { type: mime });
+      } else {
+        const text = decodeURIComponent(parts[1] || '');
+        return new Blob([text], { type: mime });
+      }
+    }
+  }
+
+  let cachedDropboxPathMode: 'full' | 'relative' | null = null;
+
+  async function uploadFileOrTextToDropbox(
+    pathUnderBase: string,
+    content: Blob | string,
+    token: string
+  ): Promise<{ success: boolean; path: string; error?: string }> {
+    const cleanSeg = (s: string) => String(s || '').replace(/[\\:*?"<>|]/g, '_').trim();
+    const normalizedSubPath = pathUnderBase
+      .split('/')
+      .map((seg) => cleanSeg(seg))
+      .filter(Boolean)
+      .join('/');
+
+    const base = cleanDropboxBasePath(appState.dropbox.baseFolder);
+    const fullPath = `${base}/${normalizedSubPath}`;
+    const relPath = `/${normalizedSubPath}`;
+
+    const blob =
+      typeof content === 'string'
+        ? new Blob([content], { type: 'text/plain;charset=utf-8' })
+        : content;
+
+    const doUpload = async (targetPath: string, tk: string) => {
+      const argHeader = asciiDropboxArg({
+        path: targetPath,
+        mode: 'overwrite',
+        autorename: false,
+        mute: true,
+        strict_conflict: false,
+      });
+      return fetch('https://content.dropboxapi.com/2/files/upload', {
+        method: 'POST',
         headers: {
-          Authorization: `Bearer ${appState.oneDrive.accessToken}`,
-          'Content-Type': blob.type || 'image/jpeg',
+          Authorization: `Bearer ${tk}`,
+          'Content-Type': 'application/octet-stream',
+          'Dropbox-API-Arg': argHeader,
         },
         body: blob,
       });
-      return res.ok;
-    } catch {
-      return false;
+    };
+
+    let targetPath = cachedDropboxPathMode === 'relative' ? relPath : fullPath;
+
+    try {
+      let res = await doUpload(targetPath, token);
+      let usedPath = targetPath;
+
+      if (res.status === 401 && appState.dropbox.refreshToken) {
+        const freshToken = await getValidDropboxToken(true).catch(() => '');
+        if (freshToken) {
+          token = freshToken;
+          res = await doUpload(targetPath, token);
+        }
+      }
+
+      // If fullPath returned 400 or 409 or path error and mode was not yet locked to relative
+      if (!res.ok && cachedDropboxPathMode !== 'relative' && fullPath.toLowerCase().startsWith('/apps/')) {
+        console.warn(`Upload with fullPath [${fullPath}] returned ${res.status}. Retrying with relative path [${relPath}]...`);
+        const retryRes = await doUpload(relPath, token);
+        if (retryRes.ok) {
+          res = retryRes;
+          usedPath = relPath;
+          cachedDropboxPathMode = 'relative';
+        }
+      } else if (res.ok && cachedDropboxPathMode === null) {
+        cachedDropboxPathMode = 'full';
+      }
+
+      if (res.ok) {
+        return { success: true, path: usedPath };
+      } else {
+        const errTxt = await res.text().catch(() => '');
+        console.error(`Dropbox upload failed (${res.status}):`, errTxt);
+        return { success: false, path: usedPath, error: `HTTP ${res.status}: ${errTxt.slice(0, 150)}` };
+      }
+    } catch (err: any) {
+      console.error('Dropbox upload network error:', err);
+      return { success: false, path: targetPath, error: err?.message || 'خطأ في الاتصال بالشبكة' };
     }
   }
 
-  async function syncLocalPhotosToOneDrive(): Promise<void> {
-    if (!appState.oneDrive.accessToken) {
-      showToast('يرجى ربط حساب OneDrive أولاً لإتمام المزامنة السحابية', 'warning');
+  async function uploadSinglePhotoToDropbox(
+    photo: InvoicePhoto,
+    contractor?: string,
+    wo?: string
+  ): Promise<{ success: boolean; error?: string; path?: string }> {
+    let token = await getValidDropboxToken(false).catch(() => '');
+    if (!token) return { success: false, error: 'لا يوجد رمز وصول (Token) صالح لـ Dropbox' };
+
+    const cleanSeg = (s: string) => String(s || '').replace(/[\\/:*?"<>|]/g, '_').trim();
+    const contractorSeg = cleanSeg(contractor || currentSession?.name || 'عام');
+    const woSeg = cleanSeg(wo || 'عام');
+    let fileNameSeg = cleanSeg(photo.name || `photo_${Date.now()}.jpg`);
+    if (!fileNameSeg.includes('.')) {
+      const mime = photo.dataUrl?.match(/:(.*?);/)?.[1] || '';
+      const ext = mime.includes('png') ? '.png' : mime.includes('svg') ? '.svg' : mime.includes('pdf') ? '.pdf' : '.jpg';
+      fileNameSeg += ext;
+    }
+
+    let blob: Blob;
+    try {
+      blob = await dataUrlToBlob(photo.dataUrl);
+    } catch (e: any) {
+      return { success: false, error: 'تعذر تحويل بيانات الصورة: ' + (e?.message || '') };
+    }
+
+    const subPath = `${contractorSeg}/${woSeg}/${fileNameSeg}`;
+    const result = await uploadFileOrTextToDropbox(subPath, blob, token);
+    if (result.success) {
+      photo.oneDrivePath = result.path;
+      photo.synced = true;
+    }
+    return result;
+  }
+
+  async function syncAllPhotosToDropbox(): Promise<void> {
+    let token = await getValidDropboxToken(false).catch(() => '');
+    if (!token) {
+      showToast('يرجى حفظ إعدادات Dropbox وتجديد التوكن أولاً لإتمام المزامنة', 'warning');
       return;
     }
-    let syncedCount = 0;
-    for (const inv of appState.invoices) {
-      let changed = false;
-      for (const p of inv.photos || []) {
-        if (!p.synced) {
-          const ok = await uploadSinglePhotoToOneDrive(p);
-          if (ok) {
-            p.synced = true;
-            syncedCount++;
-            changed = true;
+
+    const container = $('dropboxSyncProgressContainer');
+    const bar = $('dropboxSyncProgressBar');
+    const text = $('dropboxSyncProgressText');
+    const titleEl = $('dropboxSyncProgressTitle');
+    if (container) container.classList.remove('hidden');
+    if (titleEl) titleEl.textContent = 'جاري تحضير ملفات ومجلدات المقاولين وأوامر العمل...';
+
+    // 1. Gather all contractors
+    const allContractorNames = new Set<string>();
+    appState.contractors.forEach((c) => {
+      if (c.name && c.name.trim()) allContractorNames.add(c.name.trim());
+    });
+    appState.invoices.forEach((inv) => {
+      if (inv.contractor && inv.contractor.trim()) allContractorNames.add(inv.contractor.trim());
+    });
+    if (currentSession?.name && currentSession.type === 'contractor') {
+      allContractorNames.add(currentSession.name.trim());
+    }
+
+    // 2. Prepare sync items
+    interface SyncItem {
+      type: 'wo_summary' | 'photo' | 'contractor_info' | 'master_report';
+      subPath: string;
+      getContent: () => Promise<Blob | string>;
+      label: string;
+      invRef?: InvoiceRecord;
+      photoRef?: InvoicePhoto;
+    }
+
+    const items: SyncItem[] = [];
+    const cleanSeg = (s: string) => String(s || '').replace(/[\\/:*?"<>|]/g, '_').trim();
+
+    // Map invoices per contractor
+    const wosByContractor: Record<string, InvoiceRecord[]> = {};
+    allContractorNames.forEach((c) => {
+      wosByContractor[c] = [];
+    });
+    appState.invoices.forEach((inv) => {
+      const c = inv.contractor?.trim() || 'عام';
+      if (!wosByContractor[c]) wosByContractor[c] = [];
+      wosByContractor[c].push(inv);
+    });
+
+    // A. For every work order, add summary card + photos
+    appState.invoices.forEach((inv) => {
+      const cSeg = cleanSeg(inv.contractor || 'عام');
+      const woSeg = cleanSeg(inv.wo || 'عام');
+
+      // Summary text card for work order
+      const summaryCardContent = [
+        '================================================================================',
+        'الشركة السعودية للكهرباء | Saudi Electricity Company',
+        'إدارة استلام الأصول - منصة متابعة فواتير الصيانة والطوارئ',
+        '================================================================================',
+        `رقم أمر العمل (Work Order): ${inv.wo}`,
+        `المقاول المنفذ: ${inv.contractor || 'غير محدد'}`,
+        `الاستشاري المشرف: ${inv.consultant || 'غير محدد'}`,
+        `المكتب المشرف: ${inv.office || 'غير محدد'}`,
+        `نوع العمل: ${inv.workType || 'غير محدد'}`,
+        `وصف العمل: ${inv.workDesc || 'لا يوجد وصف'}`,
+        `الموقع الوظيفي (Functional Loc): ${inv.funcLoc || 'غير محدد'}`,
+        `نوع المعدة (Equipment Type): ${inv.equipType || 'غير محدد'}`,
+        `تاريخ الفاتورة: ${inv.invoiceDate || 'غير محدد'}`,
+        `تاريخ التسليم: ${inv.deliveryDate || 'غير محدد'}`,
+        `حالة الفاتورة الحالية: ${inv.status || 'قيد المراجعة'}`,
+        `تقييم الجودة: ${inv.quality || 'غير محدد'}`,
+        `الملاحظات: ${inv.note || 'لا توجد ملاحظات'}`,
+        '--------------------------------------------------------------------------------',
+        'قائمة التحقق والفحص (Checklist):',
+        `- مطابقة نظم المعلومات الجغرافية (GIS): ${inv.checklist?.gis ? 'نعم / مطابق ✓' : 'لا / غير مكتمل'}`,
+        `- مطابقة نظام ساب (SAP): ${inv.checklist?.sap ? 'نعم / مطابق ✓' : 'لا / غير مكتمل'}`,
+        `- الفحص المسبق والاختبار (Pre-test): ${inv.checklist?.pretest ? 'نعم / تم ✓' : 'لا / لم يتم'}`,
+        `- مطابقة الصور المرفقة للموقع (Photos Match): ${inv.checklist?.photosMatch ? 'نعم / مطابقة ✓' : 'لا / غير مطابقة'}`,
+        `- شريط التحذير والسلامة (Warning Tape): ${inv.checklist?.warningTape ? 'نعم / مطابق ✓' : 'لا / غير مطابق'}`,
+        '--------------------------------------------------------------------------------',
+        `عدد الصور والمرفقات المسجلة: ${(inv.photos || []).length}`,
+        `تاريخ وتوقيت الأرشفة والمزامنة مع Dropbox: ${new Date().toLocaleString('ar-SA')}`,
+        '================================================================================',
+      ].join('\r\n');
+
+      items.push({
+        type: 'wo_summary',
+        subPath: `${cSeg}/${woSeg}/بطاقة_أمر_العمل_${woSeg}.txt`,
+        getContent: async () => summaryCardContent,
+        label: `بطاقة أمر العمل ${inv.wo} للمقاول ${inv.contractor}`,
+        invRef: inv,
+      });
+
+      // Photos
+      (inv.photos || []).forEach((photo) => {
+        if (photo.dataUrl) {
+          let fileNameSeg = cleanSeg(photo.name || `photo_${Date.now()}.jpg`);
+          if (!fileNameSeg.includes('.')) {
+            const mime = photo.dataUrl.match(/:(.*?);/)?.[1] || '';
+            const ext = mime.includes('png') ? '.png' : mime.includes('svg') ? '.svg' : mime.includes('pdf') ? '.pdf' : '.jpg';
+            fileNameSeg += ext;
           }
+          items.push({
+            type: 'photo',
+            subPath: `${cSeg}/${woSeg}/${fileNameSeg}`,
+            getContent: async () => dataUrlToBlob(photo.dataUrl),
+            label: `صورة (${fileNameSeg}) لأمر العمل ${inv.wo}`,
+            invRef: inv,
+            photoRef: photo,
+          });
         }
+      });
+    });
+
+    // B. For contractors with no invoices, create contractor profile card
+    allContractorNames.forEach((cName) => {
+      const wos = wosByContractor[cName] || [];
+      if (wos.length === 0) {
+        const cSeg = cleanSeg(cName);
+        const record = appState.contractors.find((c) => c.name === cName);
+        const contractorCardContent = [
+          '================================================================================',
+          'الشركة السعودية للكهرباء | Saudi Electricity Company',
+          'إدارة استلام الأصول - منصة متابعة فواتير الصيانة والطوارئ',
+          '================================================================================',
+          `اسم المقاول: ${cName}`,
+          `حالة الاعتماد في المنصة: ${record ? (record.active ? 'نشط ومصرح له ✓' : 'موقوف') : 'مسجل'}`,
+          `تاريخ وتوقيت إنشاء المجلد في Dropbox: ${new Date().toLocaleString('ar-SA')}`,
+          '================================================================================',
+        ].join('\r\n');
+
+        items.push({
+          type: 'contractor_info',
+          subPath: `${cSeg}/بيانات_المقاول.txt`,
+          getContent: async () => contractorCardContent,
+          label: `مجلد وبيانات المقاول: ${cName}`,
+        });
       }
-      if (changed) {
-        await fsUpdateInvoicePhotos(inv.id, inv.photos);
+    });
+
+    // C. Master index report in the base directory
+    const masterReportContent = [
+      '================================================================================',
+      'الشركة السعودية للكهرباء | Saudi Electricity Company',
+      'إدارة استلام الأصول - التقرير الشامل لحصر ومزامنة المقاولين وأوامر العمل',
+      '================================================================================',
+      `تاريخ وتوقيت التقرير: ${new Date().toLocaleString('ar-SA')}`,
+      `المسار الأساسي في Dropbox: ${cleanDropboxBasePath(appState.dropbox.baseFolder)}`,
+      `إجمالي المقاولين: ${allContractorNames.size}`,
+      `إجمالي أوامر العمل: ${appState.invoices.length}`,
+      '--------------------------------------------------------------------------------',
+      'حصر المقاولين وأوامر العمل المزامنة:',
+      ...Array.from(allContractorNames).map((cName) => {
+        const wos = wosByContractor[cName] || [];
+        const woList = wos.length
+          ? wos.map((w) => `    └─ أمر عمل: ${w.wo} | ${w.workType || 'صيانة'} | الحالة: ${w.status}`).join('\r\n')
+          : '    (لا توجد أوامر عمل مسجلة حالياً لهذا المقاول)';
+        return `📂 المقاول: ${cName} (${wos.length} أمر عمل)\r\n${woList}`;
+      }),
+      '================================================================================',
+    ].join('\r\n');
+
+    items.push({
+      type: 'master_report',
+      subPath: 'فهرس_وحصر_أوامر_العمل_والمقاولين.txt',
+      getContent: async () => masterReportContent,
+      label: 'تقرير وحصر أوامر العمل الشامل',
+    });
+
+    if (!items.length) {
+      showToast('لا توجد بيانات مسجلة في المنصة للمزامنة حالياً', 'info');
+      if (container) container.classList.add('hidden');
+      return;
+    }
+
+    const total = items.length;
+    let successCount = 0;
+    let failCount = 0;
+    let syncedWoCount = 0;
+    let syncedPhotosCount = 0;
+    let lastError = '';
+
+    if (titleEl) titleEl.textContent = `جاري مزامنة كافة المقاولين وأوامر العمل (${total} عنصراً)...`;
+
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i];
+      try {
+        const content = await item.getContent();
+        const res = await uploadFileOrTextToDropbox(item.subPath, content, token);
+        if (res.success) {
+          successCount++;
+          if (item.type === 'wo_summary') syncedWoCount++;
+          if (item.type === 'photo') {
+            syncedPhotosCount++;
+            if (item.photoRef) {
+              item.photoRef.synced = true;
+              item.photoRef.oneDrivePath = res.path;
+            }
+          }
+        } else {
+          failCount++;
+          lastError = res.error || 'خطأ أثناء الرفع';
+        }
+      } catch (e: any) {
+        failCount++;
+        lastError = e?.message || 'خطأ غير معروف';
+      }
+
+      const done = i + 1;
+      const pct = Math.round((done / total) * 100);
+      if (bar) bar.style.width = `${pct}%`;
+      if (text) {
+        text.textContent = `${done} / ${total} (${pct}%) — أوامر العمل: ${syncedWoCount} | الصور: ${syncedPhotosCount}`;
       }
     }
-    renderOneDriveModule();
-    logAudit('مزامنة OneDrive', `تم رفع ومزامنة ${syncedCount} صورة إلى OneDrive`);
-    showToast(
-      syncedCount ? `تمت مزامنة ${syncedCount} صورة إلى OneDrive بنجاح` : 'كافة الصور متزامنة أو تعذر الرفع',
-      syncedCount ? 'success' : 'info'
-    );
+
+    // Persist updated photo sync statuses to Firestore
+    const modifiedInvoices = appState.invoices.filter((inv) => (inv.photos || []).some((p) => p.synced));
+    for (const inv of modifiedInvoices) {
+      await fsUpdateInvoicePhotos(inv.id, inv.photos).catch(() => {});
+    }
+
+    renderDropboxModule();
+
+    if (successCount > 0) {
+      logAudit(
+        'مزامنة شاملة Dropbox',
+        `تم نقل ومزامنة ${syncedWoCount} أمر عمل و ${allContractorNames.size} مقاول و ${syncedPhotosCount} صورة إلى Dropbox`
+      );
+      showToast(
+        failCount > 0
+          ? `تمت مزامنة ${syncedWoCount} أمر عمل و ${syncedPhotosCount} صورة، وتعذر رفع ${failCount} عنصر (${lastError})`
+          : `اكتملت مزامنة كافة المقاولين (${allContractorNames.size}) وأوامر العمل (${syncedWoCount} أمر عمل) والصور (${syncedPhotosCount} صورة) إلى Dropbox بنجاح ✓`,
+        failCount > 0 ? 'warning' : 'success'
+      );
+    } else {
+      showToast(`فشلت المزامنة إلى Dropbox: ${lastError}`, 'error');
+    }
+
+    setTimeout(() => {
+      if (container) container.classList.add('hidden');
+    }, 5000);
   }
+
+  // Aliases for full backward compatibility
+  const renderOneDriveModule = renderDropboxModule;
+  const updateOneDriveBadges = updateDropboxBadges;
+  const saveOneDriveConfig = saveDropboxConfig;
+  const connectOneDriveOAuth = testDropboxConnection;
+  const verifyOneDriveToken = testDropboxConnection;
+  const uploadSinglePhotoToOneDrive = uploadSinglePhotoToDropbox;
+  const syncLocalPhotosToOneDrive = syncAllPhotosToDropbox;
 
   // ==================== DRAG SCROLL & LIVE RE-RENDER ====================
   function enableDragScroll(el: HTMLElement | null): void {
@@ -2042,6 +2571,9 @@ export function initPlatformEngine(onFatalError?: (err: Error) => void): () => v
     addStaffUser,
     removeStaffUser,
     changeStaffRole,
+    saveDropboxConfig,
+    testDropboxConnection,
+    syncAllPhotosToDropbox,
     saveOneDriveConfig,
     connectOneDriveOAuth,
     verifyOneDriveToken,
@@ -2108,13 +2640,18 @@ export function initPlatformEngine(onFatalError?: (err: Error) => void): () => v
           }
         },
         onOneDrive: (settings) => {
-          appState.oneDrive = {
+          appState.dropbox = {
             ...settings,
-            accessToken: appState.oneDrive.accessToken || getLocalOneDriveToken(),
+            appSecret: settings.appSecret || appState.dropbox.appSecret,
+            refreshToken: settings.refreshToken || appState.dropbox.refreshToken,
+            accessToken: appState.dropbox.accessToken || getLocalDropboxToken(),
+            tokenExpiresAt: appState.dropbox.tokenExpiresAt || 0,
           };
-          updateOneDriveBadges();
+          updateDropboxBadges();
+          updateDropboxExpiryHint();
+          scheduleDropboxTokenRefresh();
           if (currentSession?.type === 'staff' && currentStaffSection === 'onedrive') {
-            renderOneDriveModule();
+            renderDropboxModule();
           }
         },
         onError: (err) => {
@@ -2123,15 +2660,15 @@ export function initPlatformEngine(onFatalError?: (err: Error) => void): () => v
         },
       });
 
-      // Check OAuth implicit hash return from Microsoft OneDrive
+      // Check OAuth token return from Dropbox OAuth
       if (window.location.hash && window.location.hash.includes('access_token=')) {
         const params = new URLSearchParams(window.location.hash.substring(1));
         const token = params.get('access_token');
         if (token) {
-          appState.oneDrive.accessToken = token;
-          setLocalOneDriveToken(token);
+          appState.dropbox.accessToken = token;
+          setLocalDropboxToken(token);
           window.history.replaceState(null, '', window.location.pathname);
-          void verifyOneDriveToken();
+          void testDropboxConnection();
         }
       }
     } catch (err) {

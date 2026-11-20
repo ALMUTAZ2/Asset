@@ -92,18 +92,18 @@ export function getInvoiceSlaInfo(inv: InvoiceRecord): SlaInfo {
       days: null,
       daysText: 'تمت المراجعة',
       category: 'تمت المراجعة',
-      badgeClass: 'bg-slate-100 text-slate-600 border-slate-200',
+      badgeClass: 'bg-se-extra-dark-blue-10 text-se-text-muted border-se-border',
     };
   }
   const days = calcWorkingDays(inv.deliveryDate);
   let category: SlaInfo['category'] = 'جديد';
-  let badgeClass = 'bg-emerald-100 text-emerald-800 border-emerald-200';
+  let badgeClass = 'bg-se-tertiary-green/20 text-se-tertiary-green border-se-tertiary-green/30';
   if (days >= 4 && days <= 5) {
     category = 'متأخر';
-    badgeClass = 'bg-amber-100 text-amber-800 border-amber-300';
+    badgeClass = 'bg-se-tertiary-orange/20 text-se-tertiary-orange border-se-tertiary-orange/30';
   } else if (days > 5) {
     category = 'مصعّد';
-    badgeClass = 'bg-rose-100 text-rose-800 border-rose-300';
+    badgeClass = 'bg-se-tertiary-red/20 text-se-tertiary-red border-se-tertiary-red/30';
   }
   const daysText =
     days === 0 ? 'اليوم (0)' : days === 1 ? '1 يوم' : days === 2 ? 'يومان' : `${days} أيام`;
@@ -112,10 +112,10 @@ export function getInvoiceSlaInfo(inv: InvoiceRecord): SlaInfo {
 
 export function statusBadgeHtml(status: string): string {
   const styles: Record<string, string> = {
-    'معتمد': 'bg-emerald-100 text-emerald-800 border-emerald-200',
-    'قيد المراجعة': 'bg-sky-100 text-sky-800 border-sky-200',
-    'ملاحظات معلقة': 'bg-amber-100 text-amber-800 border-amber-200',
-    'مرفوض': 'bg-rose-100 text-rose-800 border-rose-200',
+    'معتمد': 'bg-se-tertiary-green/20 text-se-tertiary-green border-se-tertiary-green/30',
+    'قيد المراجعة': 'bg-se-mid-blue/20 text-se-mid-blue border-se-mid-blue/30',
+    'ملاحظات معلقة': 'bg-se-tertiary-orange/20 text-se-tertiary-orange border-se-tertiary-orange/30',
+    'مرفوض': 'bg-se-tertiary-red/20 text-se-tertiary-red border-se-tertiary-red/30',
   };
   const cls = styles[status] || 'bg-slate-100 text-slate-700 border-slate-200';
   return `<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-extrabold border ${cls}">${escapeHtml(status)}</span>`;
@@ -311,19 +311,19 @@ export function createDashboardAndExportController(ctx: DashboardExportContext) 
         const sla = getInvoiceSlaInfo(inv);
         return `
           <tr class="hover:bg-slate-50 transition">
-            <td class="py-2.5 px-3 font-mono font-extrabold text-navy-900 whitespace-nowrap" dir="ltr">${escapeHtml(inv.wo)}</td>
-            <td class="py-2.5 px-3 font-bold text-navy-900 whitespace-nowrap">${escapeHtml(inv.contractor)}</td>
+            <td class="py-2.5 px-3 font-mono font-extrabold text-se-dark-blue whitespace-nowrap" dir="ltr">${escapeHtml(inv.wo)}</td>
+            <td class="py-2.5 px-3 font-bold text-se-dark-blue whitespace-nowrap">${escapeHtml(inv.contractor)}</td>
             <td class="py-2.5 px-3 text-slate-600 whitespace-nowrap">${escapeHtml(inv.consultant)}</td>
             <td class="py-2.5 px-3 font-mono text-slate-600 whitespace-nowrap" dir="ltr">${escapeHtml(inv.invoiceDate || '-')}</td>
             <td class="py-2.5 px-3 whitespace-nowrap"><span class="px-2 py-0.5 rounded-md bg-navy-50 text-navy-800 font-bold">${escapeHtml(inv.workType)}</span></td>
             <td class="py-2.5 px-3 font-semibold text-slate-700">${escapeHtml(inv.workDesc)}</td>
             <td class="py-2.5 px-3 font-semibold whitespace-nowrap">${escapeHtml(inv.office)}</td>
             <td class="py-2.5 px-3 font-mono text-slate-600 whitespace-nowrap" dir="ltr">${escapeHtml(inv.deliveryDate || '-')}</td>
-            <td class="py-2.5 px-3 font-extrabold whitespace-nowrap ${sla.reviewed ? 'text-slate-400' : 'text-navy-900'}">${escapeHtml(sla.daysText)}</td>
+            <td class="py-2.5 px-3 font-extrabold whitespace-nowrap ${sla.reviewed ? 'text-slate-400' : 'text-se-dark-blue'}">${escapeHtml(sla.daysText)}</td>
             <td class="py-2.5 px-3 whitespace-nowrap"><span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-extrabold border ${sla.badgeClass}">${escapeHtml(sla.category)}</span></td>
             <td class="py-2.5 px-3 whitespace-nowrap">
               <div>${statusBadgeHtml(inv.status)}</div>
-              ${inv.status === 'مرفوض' ? `<div class="text-[10px] font-bold text-rose-700 mt-0.5">سبب الرفض: ${escapeHtml(inv.note || 'غير محدد')}</div>` : ''}
+              ${inv.status === 'مرفوض' ? `<div class="text-[10px] font-bold text-se-tertiary-red mt-0.5">سبب الرفض: ${escapeHtml(inv.note || 'غير محدد')}</div>` : ''}
             </td>
             <td class="py-2.5 px-3 text-center whitespace-nowrap">
               <button onclick="openReviewModal('${escapeHtml(inv.id)}')" class="px-2.5 py-1 rounded-lg bg-navy-900 hover:bg-accent-500 text-white text-[11px] font-bold transition">مراجعة</button>
@@ -497,10 +497,10 @@ export function createDashboardAndExportController(ctx: DashboardExportContext) 
           <div class="flex items-center justify-between p-2 rounded-xl bg-slate-50 border border-slate-200/80">
             <div class="flex items-center gap-1.5 min-w-0">
               <span class="w-2.5 h-2.5 rounded-full shrink-0" style="background:${wtColors[idx]}"></span>
-              <span class="text-[11px] font-extrabold text-navy-900 truncate">${escapeHtml(w)}</span>
+              <span class="text-[11px] font-extrabold text-se-dark-blue truncate">${escapeHtml(w)}</span>
             </div>
             <div class="text-left shrink-0 mr-1">
-              <span class="text-xs font-black text-navy-900">${cnt}</span>
+              <span class="text-xs font-black text-se-dark-blue">${cnt}</span>
               <span class="text-[10px] font-bold text-slate-400">(${pct}%)</span>
             </div>
           </div>
@@ -740,7 +740,7 @@ export function createDashboardAndExportController(ctx: DashboardExportContext) 
     const filterInfo = getActiveDashFilterInfo();
     const hintEl = document.getElementById('dashActiveFilterHint');
     if (hintEl) {
-      hintEl.innerHTML = `<i data-lucide="sliders-horizontal" class="w-3.5 h-3.5 text-navy-700"></i><span>نطاق التصدير الحالي (${data.length} فاتورة): <b class="text-navy-900">${escapeHtml(filterInfo.summaryText)}</b></span>`;
+      hintEl.innerHTML = `<i data-lucide="sliders-horizontal" class="w-3.5 h-3.5 text-navy-700"></i><span>نطاق التصدير الحالي (${data.length} فاتورة): <b class="text-se-dark-blue">${escapeHtml(filterInfo.summaryText)}</b></span>`;
     }
 
     const total = data.length;
@@ -770,18 +770,18 @@ export function createDashboardAndExportController(ctx: DashboardExportContext) 
       color: string;
       progress?: number;
     }> = [
-      { key: 'all', label: 'إجمالي الفواتير', val: total, sub: 'اضغط لعرض كافة الفواتير', icon: 'layers', color: 'text-navy-900 bg-navy-50' },
-      { key: 'approved', label: 'معتمد', val: approved, sub: `نسبة الاعتماد: ${rate}%`, icon: 'check-circle-2', color: 'text-emerald-700 bg-emerald-50', progress: rate },
-      { key: 'withNotes', label: 'عليه ملاحظة / مرفوض', val: withNotes, sub: 'يتطلب معالجة المقاول', icon: 'alert-triangle', color: 'text-rose-700 bg-rose-50' },
-      { key: 'emergency', label: 'فواتير الطوارئ', val: emergency, sub: `${total ? Math.round((emergency / total) * 100) : 0}% من الإجمالي`, icon: 'zap', color: 'text-accent-600 bg-accent-50' },
-      { key: 'maintenance', label: 'أعمال الصيانة', val: maintenance, sub: 'صيانة معدة + صيانة مغذي', icon: 'wrench', color: 'text-sky-700 bg-sky-50' },
-      { key: 'c4c', label: 'أعمال C4C', val: c4c, sub: 'طلبات C4C المستقلة', icon: 'clipboard-list', color: 'text-amber-700 bg-amber-50' },
+      { key: 'all', label: 'إجمالي الفواتير', val: total, sub: 'اضغط لعرض كافة الفواتير', icon: 'layers', color: 'text-se-dark-blue bg-se-navy-50' },
+      { key: 'approved', label: 'معتمد', val: approved, sub: `نسبة الاعتماد: ${rate}%`, icon: 'check-circle-2', color: 'text-se-tertiary-green bg-se-tertiary-green/20', progress: rate },
+      { key: 'withNotes', label: 'عليه ملاحظة / مرفوض', val: withNotes, sub: 'يتطلب معالجة المقاول', icon: 'alert-triangle', color: 'text-se-tertiary-red bg-se-tertiary-red/20' },
+      { key: 'emergency', label: 'فواتير الطوارئ', val: emergency, sub: `${total ? Math.round((emergency / total) * 100) : 0}% من الإجمالي`, icon: 'zap', color: 'text-se-mid-blue bg-se-mid-blue/20' },
+      { key: 'maintenance', label: 'أعمال الصيانة', val: maintenance, sub: 'صيانة معدة + صيانة مغذي', icon: 'wrench', color: 'text-se-blue bg-se-blue/20' },
+      { key: 'c4c', label: 'أعمال C4C', val: c4c, sub: 'طلبات C4C المستقلة', icon: 'clipboard-list', color: 'text-se-tertiary-orange bg-se-tertiary-orange/20' },
     ];
 
     const slaCards = [
-      { key: 'sla_new', label: 'جديد (1 - 3 أيام عمل)', val: slaNew, sub: 'اضغط لعرض الفواتير الجديدة', icon: 'clock', border: 'border-emerald-200', badge: 'bg-emerald-50 text-emerald-700', valColor: 'text-emerald-700' },
-      { key: 'sla_late', label: 'متأخر (4 - 5 أيام عمل)', val: slaLate, sub: 'اضغط لعرض الفواتير المتأخرة', icon: 'hourglass', border: 'border-amber-200', badge: 'bg-amber-50 text-amber-700', valColor: 'text-amber-700' },
-      { key: 'sla_escalated', label: 'مصعّد (أكثر من 5 أيام عمل)', val: slaEscalated, sub: 'اضغط لعرض الفواتير المصعّدة', icon: 'flame', border: 'border-rose-200', badge: 'bg-rose-50 text-rose-700', valColor: 'text-rose-700' },
+      { key: 'sla_new', label: 'جديد (1 - 3 أيام عمل)', val: slaNew, sub: 'اضغط لعرض الفواتير الجديدة', icon: 'clock', border: 'border-se-tertiary-green/30', badge: 'bg-se-tertiary-green/20 text-se-tertiary-green', valColor: 'text-se-tertiary-green' },
+      { key: 'sla_late', label: 'متأخر (4 - 5 أيام عمل)', val: slaLate, sub: 'اضغط لعرض الفواتير المتأخرة', icon: 'hourglass', border: 'border-se-tertiary-orange/30', badge: 'bg-se-tertiary-orange/20 text-se-tertiary-orange', valColor: 'text-se-tertiary-orange' },
+      { key: 'sla_escalated', label: 'مصعّد (أكثر من 5 أيام عمل)', val: slaEscalated, sub: 'اضغط لعرض الفواتير المصعّدة', icon: 'flame', border: 'border-se-tertiary-red/30', badge: 'bg-se-tertiary-red/20 text-se-tertiary-red', valColor: 'text-se-tertiary-red' },
     ];
 
     const kpiEl = document.getElementById('dashKpiGrid');
@@ -792,14 +792,14 @@ export function createDashboardAndExportController(ctx: DashboardExportContext) 
             .map((c) => {
               const activeCls =
                 activeDashKpiKey === c.key
-                  ? 'ring-2 ring-accent-500 border-accent-500 shadow-md bg-accent-50/20'
-                  : 'border-slate-200 hover:border-accent-400 hover:shadow-md';
+                  ? 'ring-2 ring-se-mid-blue border-se-mid-blue shadow-md bg-se-mid-blue/20'
+                  : 'border-slate-200 hover:border-se-mid-blue hover:shadow-md';
               return `
                 <div onclick="selectDashKpiCard('${c.key}')" class="cursor-pointer bg-white rounded-2xl p-4 shadow-sm border ${activeCls} transition flex flex-col justify-between gap-2.5">
                   <div class="flex items-start justify-between gap-2">
                     <div>
                       <p class="text-[11px] font-bold text-slate-500">${c.label}</p>
-                      <p class="text-2xl font-black text-navy-900 mt-1">${c.val}</p>
+                      <p class="text-2xl font-black text-se-dark-blue mt-1">${c.val}</p>
                     </div>
                     <div class="w-10 h-10 rounded-xl ${c.color} flex items-center justify-center shrink-0">
                       <i data-lucide="${c.icon}" class="w-5 h-5"></i>
@@ -809,7 +809,7 @@ export function createDashboardAndExportController(ctx: DashboardExportContext) 
                     <p class="text-[11px] font-semibold text-slate-500">${c.sub}</p>
                     ${
                       c.progress !== undefined
-                        ? `<div class="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden mt-1.5"><div class="h-full bg-emerald-500 rounded-full" style="width:${c.progress}%"></div></div>`
+                        ? `<div class="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden mt-1.5"><div class="h-full bg-se-tertiary-green rounded-full" style="width:${c.progress}%"></div></div>`
                         : ''
                     }
                   </div>
@@ -824,12 +824,12 @@ export function createDashboardAndExportController(ctx: DashboardExportContext) 
             .map((s) => {
               const activeCls =
                 activeDashKpiKey === s.key
-                  ? 'ring-2 ring-accent-500 border-accent-500 shadow-md'
+                  ? 'ring-2 ring-se-mid-blue border-se-mid-blue shadow-md'
                   : `${s.border} hover:shadow-md`;
               return `
                 <div onclick="selectDashKpiCard('${s.key}')" class="cursor-pointer bg-white rounded-2xl p-4 shadow-sm border ${activeCls} transition flex items-center justify-between gap-3">
                   <div>
-                    <p class="text-xs font-extrabold text-navy-900">${s.label}</p>
+                    <p class="text-xs font-extrabold text-se-dark-blue">${s.label}</p>
                     <p class="text-2xl font-black ${s.valColor} mt-1">${s.val}</p>
                     <p class="text-[11px] font-semibold text-slate-500 mt-0.5">${s.sub}</p>
                   </div>
@@ -905,23 +905,23 @@ export function createDashboardAndExportController(ctx: DashboardExportContext) 
     tbody.innerHTML = rows
       .map((r) => {
         const rate = r.total ? Math.round((r.approved / r.total) * 100) : 0;
-        const barCls = rate >= 75 ? 'bg-emerald-500' : rate >= 45 ? 'bg-amber-500' : 'bg-rose-500';
+        const barCls = rate >= 75 ? 'bg-se-tertiary-green' : rate >= 45 ? 'bg-se-tertiary-orange' : 'bg-se-tertiary-red';
         return `
           <tr class="hover:bg-slate-50 transition">
-            <td class="py-3 px-4 font-extrabold text-navy-900">${escapeHtml(r.contractor)}</td>
-            <td class="py-3 px-3 text-center font-black text-navy-900">${r.total}</td>
+            <td class="py-3 px-4 font-extrabold text-se-dark-blue">${escapeHtml(r.contractor)}</td>
+            <td class="py-3 px-3 text-center font-black text-se-dark-blue">${r.total}</td>
             <td class="py-3 px-3 text-center font-bold text-accent-600">${r['طوارئ']}</td>
             <td class="py-3 px-3 text-center font-bold text-navy-800">${r['صيانة معدة']}</td>
-            <td class="py-3 px-3 text-center font-bold text-sky-700">${r['صيانة مغذي']}</td>
-            <td class="py-3 px-3 text-center font-bold text-amber-700">${r.C4C}</td>
-            <td class="py-3 px-3 text-center font-extrabold text-emerald-700">${r.approved}</td>
-            <td class="py-3 px-3 text-center font-extrabold text-rose-700">${r.flagged}</td>
+            <td class="py-3 px-3 text-center font-bold text-se-mid-blue">${r['صيانة مغذي']}</td>
+            <td class="py-3 px-3 text-center font-bold text-se-tertiary-orange">${r.C4C}</td>
+            <td class="py-3 px-3 text-center font-extrabold text-se-tertiary-green">${r.approved}</td>
+            <td class="py-3 px-3 text-center font-extrabold text-se-tertiary-red">${r.flagged}</td>
             <td class="py-3 px-4">
               <div class="flex items-center gap-2">
                 <div class="flex-1 h-2 bg-slate-100 rounded-full overflow-hidden">
                   <div class="h-full ${barCls} rounded-full" style="width:${rate}%"></div>
                 </div>
-                <span class="text-xs font-extrabold text-navy-900 w-9 text-left">${rate}%</span>
+                <span class="text-xs font-extrabold text-se-dark-blue w-9 text-left">${rate}%</span>
               </div>
             </td>
           </tr>
@@ -1091,7 +1091,7 @@ export function createDashboardAndExportController(ctx: DashboardExportContext) 
         <div style="pointer-events:none;">${kpiHtml}</div>
 
         <div class="bg-white p-5 rounded-2xl border border-slate-200">
-          <h3 class="text-sm font-extrabold text-navy-900 mb-3">توزيع أنواع الأعمال (الإجمالي: ${wtTotal})</h3>
+          <h3 class="text-sm font-extrabold text-se-dark-blue mb-3">توزيع أنواع الأعمال (الإجمالي: ${wtTotal})</h3>
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4 items-center">
             <div class="flex justify-center">
               ${imgWorkTypes ? `<img src="${imgWorkTypes}" alt="توزيع أنواع الأعمال" style="max-height:210px;object-fit:contain;" />` : ''}
@@ -1101,7 +1101,7 @@ export function createDashboardAndExportController(ctx: DashboardExportContext) 
         </div>
 
         <div class="bg-white p-5 rounded-2xl border border-slate-200">
-          <h3 class="text-sm font-extrabold text-navy-900 mb-3">عدد الفواتير حسب المقاول وحالة الاعتماد</h3>
+          <h3 class="text-sm font-extrabold text-se-dark-blue mb-3">عدد الفواتير حسب المقاول وحالة الاعتماد</h3>
           ${imgContractors ? `<img src="${imgContractors}" alt="المقاولون" style="width:100%;max-height:320px;object-fit:contain;" />` : ''}
         </div>
 
@@ -1109,22 +1109,22 @@ export function createDashboardAndExportController(ctx: DashboardExportContext) 
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div class="bg-white p-5 rounded-2xl border border-slate-200">
-            <h3 class="text-sm font-extrabold text-navy-900 mb-3">توزيع الفواتير حسب المكاتب</h3>
+            <h3 class="text-sm font-extrabold text-se-dark-blue mb-3">توزيع الفواتير حسب المكاتب</h3>
             ${imgOffices ? `<img src="${imgOffices}" alt="المكاتب" style="width:100%;max-height:260px;object-fit:contain;" />` : ''}
           </div>
           <div class="bg-white p-5 rounded-2xl border border-slate-200">
-            <h3 class="text-sm font-extrabold text-navy-900 mb-3">أكثر أوصاف الأعمال تكراراً</h3>
+            <h3 class="text-sm font-extrabold text-se-dark-blue mb-3">أكثر أوصاف الأعمال تكراراً</h3>
             ${imgWorkDescs ? `<img src="${imgWorkDescs}" alt="أوصاف الأعمال" style="width:100%;max-height:260px;object-fit:contain;" />` : ''}
           </div>
         </div>
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div class="bg-white p-5 rounded-2xl border border-slate-200">
-            <h3 class="text-sm font-extrabold text-navy-900 mb-3">مؤشر أبرز أسباب تأخر إنجاز الفواتير</h3>
+            <h3 class="text-sm font-extrabold text-se-dark-blue mb-3">مؤشر أبرز أسباب تأخر إنجاز الفواتير</h3>
             ${imgTopDelayNotes ? `<img src="${imgTopDelayNotes}" alt="أسباب التأخير" style="width:100%;max-height:260px;object-fit:contain;" />` : ''}
           </div>
           <div class="bg-white p-5 rounded-2xl border border-slate-200">
-            <h3 class="text-sm font-extrabold text-navy-900 mb-3">مؤشر أسباب تأخر إنجاز الفواتير حسب المقاول (أكثر 5 مقاولين)</h3>
+            <h3 class="text-sm font-extrabold text-se-dark-blue mb-3">مؤشر أسباب تأخر إنجاز الفواتير حسب المقاول (أكثر 5 مقاولين)</h3>
             ${imgDelayByContractor ? `<img src="${imgDelayByContractor}" alt="التأخير حسب المقاول" style="width:100%;max-height:260px;object-fit:contain;" />` : ''}
           </div>
         </div>
@@ -1155,7 +1155,7 @@ export function createDashboardAndExportController(ctx: DashboardExportContext) 
       'ملاحظة': String(i.note || ''),
       'حالة التنفيذ': String(i.quality || ''),
       'عدد الصور': (i.photos && i.photos.length) || 0,
-      'مسار صور OneDrive':
+      'مسار صور Dropbox':
         i.photos && i.photos.length
           ? i.photos.map((p) => p.oneDrivePath).join(' | ').slice(0, 30000)
           : '',
@@ -1303,7 +1303,7 @@ export function createDashboardAndExportController(ctx: DashboardExportContext) 
     const reportHtml = `
       <div class="border-b-4 border-navy-900 pb-4 mb-6 flex items-center justify-between">
         <div>
-          <h1 class="text-2xl font-black text-navy-900">التقرير التنفيذي الشامل لفواتير الصيانة والطوارئ</h1>
+          <h1 class="text-2xl font-black text-se-dark-blue">التقرير التنفيذي الشامل لفواتير الصيانة والطوارئ</h1>
           <p class="text-xs text-slate-600 mt-1">قسم استلام الأصول — صادر من المنصة الرقمية الموحّدة</p>
         </div>
         <div class="text-left text-xs text-slate-600">
@@ -1314,12 +1314,12 @@ export function createDashboardAndExportController(ctx: DashboardExportContext) 
 
       <div class="grid grid-cols-4 gap-3 mb-6">
         <div class="p-3 border border-slate-300 rounded-xl"><div class="text-xs text-slate-500">إجمالي الفواتير</div><div class="text-xl font-black">${total}</div></div>
-        <div class="p-3 border border-slate-300 rounded-xl"><div class="text-xs text-slate-500">المعتمدة</div><div class="text-xl font-black text-emerald-700">${approved} (${total ? Math.round((approved / total) * 100) : 0}%)</div></div>
+        <div class="p-3 border border-slate-300 rounded-xl"><div class="text-xs text-slate-500">المعتمدة</div><div class="text-xl font-black text-se-tertiary-green">${approved} (${total ? Math.round((approved / total) * 100) : 0}%)</div></div>
         <div class="p-3 border border-slate-300 rounded-xl"><div class="text-xs text-slate-500">فواتير الطوارئ</div><div class="text-xl font-black text-accent-600">${emergency}</div></div>
-        <div class="p-3 border border-slate-300 rounded-xl"><div class="text-xs text-slate-500">مرفوضة / ملاحظات</div><div class="text-xl font-black text-rose-700">${flagged}</div></div>
+        <div class="p-3 border border-slate-300 rounded-xl"><div class="text-xs text-slate-500">مرفوضة / ملاحظات</div><div class="text-xl font-black text-se-tertiary-red">${flagged}</div></div>
       </div>
 
-      <h2 class="text-base font-extrabold text-navy-900 mb-2">1. مصفوفة أداء المقاولين حسب نوع العمل</h2>
+      <h2 class="text-base font-extrabold text-se-dark-blue mb-2">1. مصفوفة أداء المقاولين حسب نوع العمل</h2>
       <table class="w-full text-xs border border-slate-300 mb-6">
         <thead class="bg-slate-100">
           <tr>
@@ -1353,7 +1353,7 @@ export function createDashboardAndExportController(ctx: DashboardExportContext) 
         </tbody>
       </table>
 
-      <h2 class="text-base font-extrabold text-navy-900 mb-2">2. أبرز أسباب وملاحظات تأخير إنجاز الفواتير</h2>
+      <h2 class="text-base font-extrabold text-se-dark-blue mb-2">2. أبرز أسباب وملاحظات تأخير إنجاز الفواتير</h2>
       <table class="w-full text-xs border border-slate-300 mb-6">
         <thead class="bg-slate-100"><tr><th class="border border-slate-300 p-2 text-right w-1/3">المقاول</th><th class="border border-slate-300 p-2 text-right">الملاحظة</th></tr></thead>
         <tbody>
@@ -1364,7 +1364,7 @@ export function createDashboardAndExportController(ctx: DashboardExportContext) 
       </table>
 
       <div class="page-break"></div>
-      <h2 class="text-base font-extrabold text-navy-900 mb-2">3. الجدول التفصيلي الكامل للفواتير (${total} فاتورة)</h2>
+      <h2 class="text-base font-extrabold text-se-dark-blue mb-2">3. الجدول التفصيلي الكامل للفواتير (${total} فاتورة)</h2>
       <table class="w-full text-[11px] border border-slate-300">
         <thead class="bg-slate-100">
           <tr>
@@ -1420,7 +1420,7 @@ export function createDashboardAndExportController(ctx: DashboardExportContext) 
       <div class="border-2 border-navy-900 rounded-2xl p-6">
         <div class="flex justify-between items-center border-b-2 border-slate-200 pb-4 mb-5">
           <div>
-            <h1 class="text-xl font-black text-navy-900">بطاقة أمر عمل فاتورة صيانة / طوارئ</h1>
+            <h1 class="text-xl font-black text-se-dark-blue">بطاقة أمر عمل فاتورة صيانة / طوارئ</h1>
             <p class="text-xs text-slate-500">رقم أمر العمل: <b class="font-mono text-sm">${escapeHtml(inv.wo)}</b></p>
           </div>
           <div class="text-xs text-left">تاريخ الطباعة: ${formatNow()}</div>

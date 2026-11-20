@@ -2,26 +2,76 @@
 
 @theme {
   --font-cairo: "Cairo", sans-serif;
-  --color-navy-50: #eef3f9;
-  --color-navy-100: #d5e2f0;
-  --color-navy-200: #abc5e1;
-  --color-navy-700: #163b6b;
-  --color-navy-800: #0f2f57;
-  --color-navy-900: #0B2545;
-  --color-navy-950: #07182e;
-  --color-accent-50: #fff4ee;
-  --color-accent-100: #ffe5d6;
-  --color-accent-400: #fb8a54;
-  --color-accent-500: #F26522;
-  --color-accent-600: #d95314;
-  --color-accent-700: #b8420d;
-  --color-slatebg: #F4F7FA;
+
+  /* SE Primary Palette */
+  --color-se-dark-blue: #001F5E;
+  --color-se-white: #FFFFFF;
+  --color-se-full-gradient: linear-gradient(135deg, #001F5E 0%, #0080FF 50%, #00FF86 100%);
+  --color-se-dark-gradient: linear-gradient(135deg, #001F5E 0%, #0080FF 100%);
+
+  /* SE Secondary Palette */
+  --color-se-light-blue: #32C2FF;
+  --color-se-mid-blue: #0080FF;
+  --color-se-blue: #0027B9;
+  --color-se-green: #00FF86;
+  --color-se-gradient-1: linear-gradient(135deg, #0080FF 0%, #00FF86 100%);
+  --color-se-gradient-2: linear-gradient(135deg, #0080FF 0%, #32C2FF 100%);
+  --color-se-gradient-3: linear-gradient(135deg, #32C2FF 0%, #00FF86 100%);
+
+  /* SE Tertiary Palette */
+  --color-se-tertiary-green: #00B476;
+  --color-se-tertiary-orange: #EF9B00;
+  --color-se-extra-dark-blue: #00183A;
+  --color-se-extra-dark-blue-40: #9BA2AF;
+  --color-se-tertiary-red: #E10054;
+  --color-se-extra-dark-blue-25: #C0C5CD;
+  --color-se-extra-dark-blue-10: #E6E8EB;
+  --color-se-tertiary-purple: #8035BB;
+  --color-se-extra-dark-blue-05: #F2F3F5;
+
+  /* Aliases for backward compatibility */
+  --color-navy-950: #00183A;
+  --color-navy-900: #001F5E;
+  --color-navy-800: #0027B9;
+  --color-navy-700: #001F5E;
+  --color-navy-600: #0027B9;
+  --color-navy-500: #0080FF;
+  --color-navy-400: #32C2FF;
+  --color-navy-300: #80C0FF;
+  --color-navy-200: #B3D9FF;
+  --color-navy-100: #E6F2FF;
+  --color-navy-50: #F0F7FF;
+
+  --color-accent-500: #0080FF;
+  --color-accent-400: #32C2FF;
+  --color-accent-600: #0027B9;
+  --color-accent-700: #001F5E;
+  --color-accent-300: #80C0FF;
+  --color-accent-200: #B3D9FF;
+  --color-accent-100: #E6F2FF;
+  --color-accent-50: #F0F7FF;
+
+  --color-se-500: #0080FF;
+  --color-se-600: #0027B9;
+  --color-se-700: #001F5E;
+  --color-se-800: #00183A;
+  --color-se-900: #00183A;
+  --color-se-950: #00183A;
+
+  --color-slatebg: #F2F3F5;
+  --color-surface: #FFFFFF;
+  --color-surface-muted: #F2F3F5;
+  --color-border: #C0C5CD;
+  --color-border-strong: #9BA2AF;
+  --color-text-primary: #00183A;
+  --color-text-secondary: #001F5E;
+  --color-text-muted: #9BA2AF;
 }
 
 body {
   font-family: 'Cairo', sans-serif;
-  background-color: #F4F7FA;
-  color: #0f172a;
+  background-color: #F2F3F5;
+  color: #00183A;
 }
 
 ::-webkit-scrollbar {
@@ -29,15 +79,15 @@ body {
   height: 10px;
 }
 ::-webkit-scrollbar-track {
-  background: #e9eef5;
+  background: #E6E8EB;
   border-radius: 999px;
 }
 ::-webkit-scrollbar-thumb {
-  background: #94a3b8;
+  background: #9BA2AF;
   border-radius: 999px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #0B2545;
+  background: #0027B9;
 }
 
 .copyable-table,
@@ -111,4 +161,51 @@ body {
   tr {
     page-break-inside: avoid !important;
   }
+}
+
+@keyframes seGlow {
+  0%, 100% { filter: drop-shadow(0 0 6px rgba(0,128,255,0.4)); }
+  50% { filter: drop-shadow(0 0 16px rgba(0,128,255,0.9)); }
+}
+.se-logo-glow { animation: seGlow 3s ease-in-out infinite; }
+
+.se-sidebar-gradient {
+  background: linear-gradient(180deg, #001F5E 0%, #00183A 60%, #00183A 100%);
+}
+
+.se-header-bar {
+  border-bottom: 2px solid #0080FF;
+}
+
+@keyframes energyPulse {
+  0% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.05); opacity: 0.85; }
+  100% { transform: scale(1); opacity: 1; }
+}
+.se-energy-icon { animation: energyPulse 2.5s ease-in-out infinite; }
+
+/* SE Brand Gradient Utilities */
+.bg-se-primary-gradient {
+  background: var(--color-se-full-gradient);
+}
+.bg-se-dark-gradient {
+  background: var(--color-se-dark-gradient);
+}
+.bg-se-gradient-1 {
+  background: var(--color-se-gradient-1);
+}
+.bg-se-gradient-2 {
+  background: var(--color-se-gradient-2);
+}
+.bg-se-gradient-3 {
+  background: var(--color-se-gradient-3);
+}
+.text-se-gradient {
+  background: var(--color-se-full-gradient);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.border-se-gradient {
+  border-image: var(--color-se-full-gradient) 1;
 }

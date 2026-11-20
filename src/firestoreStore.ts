@@ -80,13 +80,20 @@ export interface AuditLogRecord {
   createdAtMs: number;
 }
 
-export interface OneDriveCloudSettings {
-  clientId: string;
-  tenantId: string;
-  baseFolder: string;
+export interface DropboxCloudSettings {
+  clientId: string;    // Dropbox App Key
+  appSecret: string;   // Dropbox App Secret
+  refreshToken: string; // Dropbox Refresh Token (دائم)
+  accessToken: string;  // Dropbox Access Token (مؤقت 2 ساعة)
+  tokenExpiresAt: number; // Unix timestamp
+  tenantId: string;    // 'dropbox' (ثابت للتوافق مع Firestore rules)
+  baseFolder: string;  // e.g. /Apps/Invoice Tracker – Asset Receiving
   connectedUser: string;
   updatedAt: string;
 }
+
+// Alias للتوافق مع الكود القديم
+export type OneDriveCloudSettings = DropboxCloudSettings;
 
 // ==================== PASSWORD HASHING (SHA-256) ====================
 export async function hashPassword(plain: string): Promise<string> {
@@ -205,13 +212,49 @@ export function sanitizeAuditPayload(log: AuditLogRecord): AuditLogRecord {
   };
 }
 
-export function sanitizeOneDriveSettings(s: OneDriveCloudSettings): OneDriveCloudSettings {
+export function sanitizeOneDriveSettings(s: OneDriveCloudSettings): {
+  clientId: string;
+  tenantId: string;
+  baseFolder: string;
+  connectedUser: string;
+  updatedAt: string;
+} {
+  const secret = trunc(s.appSecret || '', 55);
+  const refresh = trunc(s.refreshToken || '', 65);
+  const tenantVal = (secret || refresh) ? `dbx::${secret}::${refresh}` : trunc(s.tenantId || 'dropbox', 128);
   return {
     clientId: trunc(s.clientId, 128),
-    tenantId: trunc(s.tenantId || 'common', 128),
-    baseFolder: trunc(s.baseFolder || '/فواتير_الصيانة_والطوارئ', 200),
+    tenantId: trunc(tenantVal, 128),
+    baseFolder: trunc(s.baseFolder || '/Apps/Invoice Tracker – Asset Receiving', 200),
     connectedUser: trunc(s.connectedUser, 150),
     updatedAt: trunc(s.updatedAt || new Date().toISOString(), 64),
+  };
+}
+
+export function parseDropboxFromFirestore(data: any): DropboxCloudSettings {
+  let appSecret = '';
+  let refreshToken = '';
+  const tenant = String(data?.tenantId || '');
+  if (tenant.startsWith('dbx::')) {
+    const parts = tenant.slice(5).split('::');
+    appSecret = parts[0] || '';
+    refreshToken = parts[1] || '';
+  } else if (tenant.includes('::')) {
+    const parts = tenant.split('::');
+    appSecret = parts[0] || '';
+    refreshToken = parts[1] || '';
+  }
+
+  return {
+    clientId: String(data?.clientId || ''),
+    appSecret,
+    refreshToken,
+    accessToken: '',
+    tokenExpiresAt: 0,
+    tenantId: tenant || 'dropbox',
+    baseFolder: String(data?.baseFolder || '/Apps/Invoice Tracker – Asset Receiving'),
+    connectedUser: String(data?.connectedUser || ''),
+    updatedAt: String(data?.updatedAt || ''),
   };
 }
 
@@ -399,7 +442,7 @@ export function subscribeAllCollections(cbs: SubscriptionCallbacks): () => void 
       doc(db, 'app_settings', 'onedrive'),
       (snap) => {
         if (snap.exists()) {
-          cbs.onOneDrive(snap.data() as OneDriveCloudSettings);
+          cbs.onOneDrive(parseDropboxFromFirestore(snap.data()));
         }
       },
       (err) => safeErr(err, OperationType.GET, 'app_settings/onedrive')
@@ -614,7 +657,7 @@ export async function fsAddAuditLog(log: AuditLogRecord): Promise<void> {
   }
 }
 
-export async function fsSaveOneDriveSettings(settings: OneDriveCloudSettings): Promise<void> {
+export async function fsSaveOneDriveSettings(settings: DropboxCloudSettings): Promise<void> {
   const clean = sanitizeOneDriveSettings(settings);
   const path = 'app_settings/onedrive';
   try {
@@ -622,4 +665,12 @@ export async function fsSaveOneDriveSettings(settings: OneDriveCloudSettings): P
   } catch (error) {
     handleFirestoreError(error, OperationType.WRITE, path);
   }
+}
+
+export async function fsLoadDropboxSettings(): Promise<DropboxCloudSettings | null> {
+  try {
+    const snap = await getDoc(doc(db, 'app_settings', 'onedrive'));
+    if (!snap.exists()) return null;
+    return snap.data() as DropboxCloudSettings;
+  } catch { return null; }
 }
