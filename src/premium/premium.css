@@ -135,6 +135,15 @@ input, select, textarea { transition: border-color .2s ease, box-shadow .2s ease
 .pm-reveal { opacity: 0; transform: translateY(14px); }
 .pm-reveal.pm-in { opacity: 1; transform: none; transition: opacity .6s var(--pm-ease), transform .6s var(--pm-ease); transition-delay: var(--pm-delay, 0ms); }
 
+/* Guarantee KPI cards, charts, and indicators are never hidden by reveal */
+#dashKpiGrid,
+#dashKpiGrid *,
+#sec_dashboard canvas,
+canvas {
+  opacity: 1 !important;
+  visibility: visible !important;
+}
+
 @keyframes pmEnter { from { opacity: 0; transform: translateY(10px); filter: blur(2px); } to { opacity: 1; transform: none; filter: none; } }
 @keyframes pmModalIn { from { opacity: 0; transform: translateY(12px) scale(.98); } to { opacity: 1; transform: none; } }
 @keyframes pmToastIn { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: none; } }

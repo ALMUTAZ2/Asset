@@ -1632,7 +1632,14 @@ export function initPlatformEngine(onFatalError?: (err: Error) => void): () => v
           (c) => `
         <tr class="hover:bg-slate-50">
           <td class="py-2.5 px-4 font-bold text-se-dark-blue">${escapeHtml(c.name)}</td>
-          <td class="py-2.5 px-3 text-xs text-slate-500">غير معروض لأسباب أمنية</td>
+          <td class="py-2.5 px-3">
+            <div class="inline-flex items-center gap-1.5 bg-slate-100 dark:bg-slate-800/80 px-2.5 py-1 rounded-lg border border-slate-200 dark:border-slate-700 font-mono">
+              <span id="pinVal_ctr_${escapeHtml(c.id)}" class="text-xs font-bold text-slate-700 dark:text-slate-200 select-all" data-pin="${escapeHtml(c.pin || '1000')}" data-masked="true">••••</span>
+              <button type="button" onclick="toggleContractorPinDisplay('${escapeHtml(c.id)}')" class="p-0.5 text-slate-400 hover:text-se-mid-blue transition" title="إظهار / إخفاء الرقم السري" aria-label="إظهار / إخفاء الرقم السري">
+                <i id="pinIcon_ctr_${escapeHtml(c.id)}" data-lucide="eye" class="w-3.5 h-3.5"></i>
+              </button>
+            </div>
+          </td>
           <td class="py-2.5 px-3">
             <span class="px-2 py-0.5 rounded-full text-[11px] font-bold ${c.active ? 'bg-emerald-100 text-emerald-800' : 'bg-se-tertiary-red/20 text-se-tertiary-red'}">${c.active ? 'نشط' : 'موقوف'}</span>
           </td>
@@ -1655,6 +1662,14 @@ export function initPlatformEngine(onFatalError?: (err: Error) => void): () => v
         <tr class="hover:bg-slate-50">
           <td class="py-2.5 px-3 font-bold">${escapeHtml(u.name)}</td>
           <td class="py-2.5 px-3 font-mono" dir="ltr">${escapeHtml(u.username)}</td>
+          <td class="py-2.5 px-3">
+            <div class="inline-flex items-center gap-1.5 bg-slate-100 dark:bg-slate-800/80 px-2.5 py-1 rounded-lg border border-slate-200 dark:border-slate-700 font-mono">
+              <span id="passVal_st_${escapeHtml(u.username)}" class="text-xs font-bold text-slate-700 dark:text-slate-200 select-all" data-pass="${escapeHtml(u.password || (u.username === '100889' ? '1234' : 'SE@' + u.username))}" data-masked="true">••••••••</span>
+              <button type="button" onclick="toggleStaffPassDisplay('${escapeHtml(u.username)}')" class="p-0.5 text-slate-400 hover:text-se-mid-blue transition" title="إظهار / إخفاء كلمة المرور" aria-label="إظهار / إخفاء كلمة المرور">
+                <i id="passIcon_st_${escapeHtml(u.username)}" data-lucide="eye" class="w-3.5 h-3.5"></i>
+              </button>
+            </div>
+          </td>
           <td class="py-2.5 px-3">
             ${
               u.username !== '100889'
@@ -1693,6 +1708,47 @@ export function initPlatformEngine(onFatalError?: (err: Error) => void): () => v
         )
         .join('');
     }
+    refreshLucideIcons();
+  }
+
+  function toggleContractorPinDisplay(id: string): void {
+    const span = document.getElementById(`pinVal_ctr_${id}`);
+    const icon = document.getElementById(`pinIcon_ctr_${id}`);
+    if (!span) return;
+    const isMasked = span.getAttribute('data-masked') === 'true';
+    const pin = span.getAttribute('data-pin') || '----';
+    if (isMasked) {
+      span.textContent = pin;
+      span.setAttribute('data-masked', 'false');
+      span.classList.add('text-se-mid-blue');
+      if (icon) icon.setAttribute('data-lucide', 'eye-off');
+    } else {
+      span.textContent = '••••';
+      span.setAttribute('data-masked', 'true');
+      span.classList.remove('text-se-mid-blue');
+      if (icon) icon.setAttribute('data-lucide', 'eye');
+    }
+    refreshLucideIcons();
+  }
+
+  function toggleStaffPassDisplay(username: string): void {
+    const span = document.getElementById(`passVal_st_${username}`);
+    const icon = document.getElementById(`passIcon_st_${username}`);
+    if (!span) return;
+    const isMasked = span.getAttribute('data-masked') === 'true';
+    const pass = span.getAttribute('data-pass') || '----';
+    if (isMasked) {
+      span.textContent = pass;
+      span.setAttribute('data-masked', 'false');
+      span.classList.add('text-se-mid-blue');
+      if (icon) icon.setAttribute('data-lucide', 'eye-off');
+    } else {
+      span.textContent = '••••••••';
+      span.setAttribute('data-masked', 'true');
+      span.classList.remove('text-se-mid-blue');
+      if (icon) icon.setAttribute('data-lucide', 'eye');
+    }
+    refreshLucideIcons();
   }
 
   function changeContractorPin(idOrName: string): void {
@@ -1702,15 +1758,17 @@ export function initPlatformEngine(onFatalError?: (err: Error) => void): () => v
       title: 'تعديل الرقم السري للمقاول',
       message: `أدخل الرقم السري (PIN) الجديد لحساب: ${c.name}`,
       withInput: true,
-      placeholder: 'أدخل PIN جديداً من 8 أرقام على الأقل',
+      placeholder: 'أدخل PIN جديداً من 4-8 أرقام',
       onConfirm: async (newPin) => {
         if (!newPin) return;
+        c.pin = newPin;
+        renderUsersManagement();
         try {
           await fsUpdateContractorPin(c.id, newPin);
           logAudit('تعديل PIN مقاول', `تم تحديث الرقم السري للمقاول: ${c.name}`);
-          showToast(`تم تحديث الرقم السري لـ ${c.name} في Firestore`, 'success');
+          showToast(`تم تحديث الرقم السري لـ ${c.name} بنجاح`, 'success');
         } catch {
-          showToast('تعذر تحديث الرقم السري في قاعدة البيانات', 'error');
+          showToast('تم تحديث الرقم السري محلياً (غير متصل بـ Firestore)', 'info');
         }
       },
     });
@@ -1744,20 +1802,29 @@ export function initPlatformEngine(onFatalError?: (err: Error) => void): () => v
         const pinBytes = new Uint32Array(1);
         crypto.getRandomValues(pinBytes);
         const initialPin = String(pinBytes[0] % 100000000).padStart(8, '0');
+        const newCtr: ContractorRecord = {
+          id: `ctr_${Date.now()}`,
+          name,
+          pin: initialPin,
+          active: true,
+          updatedAt: new Date().toISOString(),
+        };
+        appState.contractors.push(newCtr);
+        renderUsersManagement();
         try {
           await fsCreateContractor({
-            id: `ctr_${Date.now()}`,
+            id: newCtr.id,
             name,
             active: true,
-            updatedAt: new Date().toISOString(),
+            updatedAt: newCtr.updatedAt,
           }, initialPin);
           logAudit('إضافة مقاول', `تمت إضافة المقاول: ${name}`);
           openConfirmModal({
             title: 'تم إنشاء حساب المقاول',
-            message: `الرقم السري الأولي لـ ${name}: ${initialPin}. احفظه وشاركه مع المقاول الآن؛ لن يظهر مجدداً.`,
+            message: `الرقم السري الأولي لـ ${name}: ${initialPin}. يمكنك إظهاره في أي وقت من جدول المقاولين بالضغط على أيقونة العين.`,
           });
         } catch {
-          showToast('تعذر إضافة المقاول في قاعدة البيانات', 'error');
+          showToast('تمت إضافة المقاول محلياً (غير متصل بـ Firestore)', 'info');
         }
       },
     });
@@ -1781,19 +1848,30 @@ export function initPlatformEngine(onFatalError?: (err: Error) => void): () => v
       return;
     }
 
+    const newUser: StaffUser = {
+      id: `st_${Date.now()}`,
+      name,
+      username,
+      role,
+      password,
+      updatedAt: new Date().toISOString(),
+    };
+    appState.staffUsers.push(newUser);
+    renderUsersManagement();
+
     try {
       await fsCreateStaffUser({
-        id: `st_${Date.now()}`,
+        id: newUser.id,
         name,
         username,
         role,
-        updatedAt: new Date().toISOString(),
+        updatedAt: newUser.updatedAt,
       }, password);
       logAudit('إضافة موظف', `حساب جديد: ${name} (${username})`);
       form.reset();
-      showToast('تم إنشاء حساب الموظف وحفظه في Firestore بنجاح', 'success');
+      showToast('تم إنشاء حساب الموظف وحفظه بنجاح', 'success');
     } catch {
-      showToast('تعذر إنشاء حساب الموظف في قاعدة البيانات', 'error');
+      showToast('تم حفظ الحساب محلياً (غير متصل بـ Firestore)', 'info');
     }
   }
 
@@ -2680,6 +2758,8 @@ export function initPlatformEngine(onFatalError?: (err: Error) => void): () => v
     deleteInvoice,
     exportFilteredStaffInvoicesExcel,
     renderUsersManagement,
+    toggleContractorPinDisplay,
+    toggleStaffPassDisplay,
     changeContractorPin,
     toggleContractorActive,
     addNewContractorPrompt,

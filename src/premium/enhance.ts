@@ -63,9 +63,7 @@ function initTheme() {
   btn.id = 'pmThemeToggle';
   btn.type = 'button';
   btn.addEventListener('click', () => {
-    const go = () => setTheme(!isDark(), btn);
-    const d = document as any;
-    if (d.startViewTransition && !reduced()) d.startViewTransition(go); else go();
+    setTheme(!isDark(), btn);
   });
   document.body.appendChild(btn);
   setTheme(dark, btn);
@@ -99,11 +97,19 @@ let io: IntersectionObserver | null = null;
 function revealTargets(root: ParentNode) {
   if (reduced() || !io) return;
   const els = root.querySelectorAll<HTMLElement>(
-    '#dashKpiGrid .rounded-2xl, section .rounded-2xl.bg-white:not(.pm-seen), canvas'
+    'section .rounded-2xl.bg-white:not(.pm-seen)'
   );
   let i = 0;
   els.forEach((el) => {
-    if (el.classList.contains('pm-seen') || el.closest('[id$="Modal"]')) return;
+    if (
+      el.classList.contains('pm-seen') ||
+      el.closest('[id$="Modal"]') ||
+      el.closest('#dashKpiGrid') ||
+      el.closest('#sec_dashboard') ||
+      el.tagName === 'CANVAS'
+    ) {
+      return;
+    }
     el.classList.add('pm-seen', 'pm-reveal');
     el.style.setProperty('--pm-delay', `${Math.min(i++, 8) * 45}ms`);
     io!.observe(el);

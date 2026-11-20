@@ -462,6 +462,7 @@ export const STAFF_VIEW_MARKUP = `
                       <tr>
                         <th class="py-2.5 px-3">الموظف</th>
                         <th class="py-2.5 px-3">المستخدم</th>
+                        <th class="py-2.5 px-3">كلمة المرور / PIN</th>
                         <th class="py-2.5 px-3">الصلاحية</th>
                         <th class="py-2.5 px-3 text-center">حذف</th>
                       </tr>

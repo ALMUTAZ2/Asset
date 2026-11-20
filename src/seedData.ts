@@ -269,21 +269,21 @@ export function buildSeedContractors(): ContractorRecord[] {
 
 export function buildSeedStaffUsers(): StaffUser[] {
   return [
-    { id: 'st_1', name: 'المعتز محمد ابوطالب', username: '100889', role: 'admin', updatedAt: '2026-11-19T21:42:24.852Z' },
-    { id: 'st_2', name: 'عماد احمد عقيلي', username: '78620', role: 'reviewer', updatedAt: '2026-11-19T16:52:52.236Z' },
-    { id: 'st_3', name: 'يوسف ال جحيف', username: '66288', role: 'reviewer', updatedAt: '2026-11-19T16:52:52.236Z' },
-    { id: 'st_4', name: 'عبدالعزيز حكمي', username: '114073', role: 'reviewer', updatedAt: '2026-11-19T16:52:52.236Z' },
-    { id: 'st_5', name: 'عبدالعزيز النعمي', username: '114084', role: 'reviewer', updatedAt: '2026-11-19T16:52:52.236Z' },
-    { id: 'st_6', name: 'إبراهيم حوذان', username: '110161', role: 'reviewer', updatedAt: '2026-11-19T16:52:52.236Z' },
-    { id: 'st_7', name: 'عبدالرحمن حمود آل عقيل', username: '1077825980', role: 'reviewer', updatedAt: '2026-11-19T16:52:52.236Z' },
-    { id: 'st_8', name: 'ريان احمد نمري', username: '1102794680', role: 'reviewer', updatedAt: '2026-11-19T16:52:52.236Z' },
-    { id: 'st_9', name: 'أحمد ماجد صائغ', username: '1093540407', role: 'reviewer', updatedAt: '2026-11-19T16:52:52.236Z' },
-    { id: 'st_10', name: 'خالد علي الحازمي', username: '1087282826', role: 'reviewer', updatedAt: '2026-11-19T16:52:52.236Z' },
-    { id: 'st_11', name: 'إبراهيم علي حكمي', username: '1101833679', role: 'reviewer', updatedAt: '2026-11-19T16:52:52.236Z' },
-    { id: 'st_12', name: 'خالد مجلي كريري', username: '1109735108', role: 'reviewer', updatedAt: '2026-11-19T16:52:52.236Z' },
-    { id: 'st_13', name: 'علي احمد الغريب', username: '1107106401', role: 'reviewer', updatedAt: '2026-11-19T16:52:52.236Z' },
-    { id: 'st_14', name: 'محمد احمد مسلماني', username: '1091959393', role: 'reviewer', updatedAt: '2026-11-19T16:52:52.236Z' },
-    { id: 'st_15', name: 'عبدالعزيز هاشم صيقل', username: '1079857098', role: 'reviewer', updatedAt: '2026-11-19T16:52:52.236Z' },
+    { id: 'st_1', name: 'المعتز محمد ابوطالب', username: '100889', role: 'admin', password: '1234', updatedAt: '2026-11-19T21:42:24.852Z' },
+    { id: 'st_2', name: 'عماد احمد عقيلي', username: '78620', role: 'reviewer', password: 'SE@78620', updatedAt: '2026-11-19T16:52:52.236Z' },
+    { id: 'st_3', name: 'يوسف ال جحيف', username: '66288', role: 'reviewer', password: 'SE@66288', updatedAt: '2026-11-19T16:52:52.236Z' },
+    { id: 'st_4', name: 'عبدالعزيز حكمي', username: '114073', role: 'reviewer', password: 'SE@114073', updatedAt: '2026-11-19T16:52:52.236Z' },
+    { id: 'st_5', name: 'عبدالعزيز النعمي', username: '114084', role: 'reviewer', password: 'SE@114084', updatedAt: '2026-11-19T16:52:52.236Z' },
+    { id: 'st_6', name: 'إبراهيم حوذان', username: '110161', role: 'reviewer', password: 'SE@110161', updatedAt: '2026-11-19T16:52:52.236Z' },
+    { id: 'st_7', name: 'عبدالرحمن حمود آل عقيل', username: '1077825980', role: 'reviewer', password: 'SE@1077825980', updatedAt: '2026-11-19T16:52:52.236Z' },
+    { id: 'st_8', name: 'ريان احمد نمري', username: '1102794680', role: 'reviewer', password: 'SE@1102794680', updatedAt: '2026-11-19T16:52:52.236Z' },
+    { id: 'st_9', name: 'أحمد ماجد صائغ', username: '1093540407', role: 'reviewer', password: 'SE@1093540407', updatedAt: '2026-11-19T16:52:52.236Z' },
+    { id: 'st_10', name: 'خالد علي الحازمي', username: '1087282826', role: 'reviewer', password: 'SE@1087282826', updatedAt: '2026-11-19T16:52:52.236Z' },
+    { id: 'st_11', name: 'إبراهيم علي حكمي', username: '1101833679', role: 'reviewer', password: 'SE@1101833679', updatedAt: '2026-11-19T16:52:52.236Z' },
+    { id: 'st_12', name: 'خالد مجلي كريري', username: '1109735108', role: 'reviewer', password: 'SE@1109735108', updatedAt: '2026-11-19T16:52:52.236Z' },
+    { id: 'st_13', name: 'علي احمد الغريب', username: '1107106401', role: 'reviewer', password: 'SE@1107106401', updatedAt: '2026-11-19T16:52:52.236Z' },
+    { id: 'st_14', name: 'محمد احمد مسلماني', username: '1091959393', role: 'reviewer', password: 'SE@1091959393', updatedAt: '2026-11-19T16:52:52.236Z' },
+    { id: 'st_15', name: 'عبدالعزيز هاشم صيقل', username: '1079857098', role: 'reviewer', password: 'SE@1079857098', updatedAt: '2026-11-19T16:52:52.236Z' },
   ];
 }
 

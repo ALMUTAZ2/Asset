@@ -1476,7 +1476,9 @@ export function createDashboardAndExportController(ctx: DashboardExportContext) 
 
   window.addEventListener('se-theme-changed', () => {
     try {
-      if (ctx.getInvoices().length > 0) {
+      const sec = document.getElementById('sec_dashboard');
+      const isDashVisible = sec && !sec.classList.contains('hidden');
+      if (isDashVisible && ctx.getInvoices().length > 0) {
         renderDashboard();
       }
     } catch {

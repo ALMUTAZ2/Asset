@@ -22,6 +22,8 @@ export interface StaffUser {
   name: string;
   username: string;
   role: StaffRole;
+  password?: string;
+  pin?: string;
   updatedAt: string;
 }
 
