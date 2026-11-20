@@ -1,16 +1,16 @@
 export const BOOT_AND_GLOBAL_OVERLAYS_MARKUP = `
   <!-- ==================== FIRESTORE BOOT / SEED OVERLAY ==================== -->
-  <div id="dbBootOverlay" class="fixed inset-0 z-[130] bg-se-dark-gradient flex items-center justify-center p-6 text-white">
-    <div class="max-w-md w-full bg-white/10 backdrop-blur-md border border-white/15 rounded-3xl p-8 text-center shadow-2xl animate-fade-up">
-      <div class="w-16 h-16 mx-auto rounded-2xl bg-se-mid-blue flex items-center justify-center shadow-lg shadow-se-mid-blue/30 mb-5">
-        <i data-lucide="database" class="w-8 h-8 text-white animate-pulse"></i>
+  <div id="dbBootOverlay" role="status" aria-live="polite" class="fixed inset-0 z-[130] flex items-center justify-center p-6 text-white">
+    <div class="boot-card relative w-full max-w-lg overflow-hidden rounded-[2rem] border border-white/15 p-8 text-center sm:p-12">
+      <div class="boot-orbit" aria-hidden="true"><span></span><span></span><span></span></div>
+      <div class="relative z-10 mx-auto mb-7 flex h-16 w-16 items-center justify-center rounded-2xl border border-white/20 bg-white/10 shadow-2xl">
+        <i data-lucide="zap" class="h-8 w-8 text-se-light-blue"></i>
       </div>
-      <p class="text-xs font-bold text-se-light-blue mb-1">منصة متابعة فواتير الصيانة والطوارئ — قسم استلام الأصول</p>
-      <h2 class="text-xl font-black text-white mt-2">جاري الاتصال بقاعدة بيانات Firestore</h2>
-      <p id="dbBootStatusText" class="text-xs text-slate-300 mt-2">جاري التحقق من قاعدة البيانات ومزامنة المستخدمين والصلاحيات...</p>
-      <div class="w-full h-2 bg-white/15 rounded-full overflow-hidden mt-6">
-        <div class="h-full bg-se-mid-blue rounded-full w-2/3 animate-pulse"></div>
-      </div>
+      <p class="relative z-10 mb-3 text-xs font-bold tracking-wide text-se-light-blue">الشركة السعودية للطاقة <span class="mx-1 text-white/40">/</span> استلام الأصول</p>
+      <h2 class="relative z-10 text-2xl font-black leading-relaxed sm:text-3xl">طاقةٌ لا تتوقف.. وإدارةٌ تُحكم كل تفصيل</h2>
+      <p class="relative z-10 mt-3 text-sm leading-7 text-white/75">نُهيّئ بياناتك وصلاحياتك، لتقود عمليات الاستلام بدقة وثقة</p>
+      <div class="boot-progress relative z-10 mt-8" aria-hidden="true"><span></span></div>
+      <p id="dbBootStatusText" class="relative z-10 mt-4 text-xs font-semibold tracking-wide text-white/65">نُجهّز بيئة العمل...</p>
     </div>
   </div>
 
@@ -46,7 +46,7 @@ export const LOGIN_VIEW_MARKUP = `
       <div class="relative z-10 w-full max-w-5xl grid grid-cols-1 lg:grid-cols-12 bg-white rounded-3xl shadow-2xl overflow-hidden border border-white/10 animate-fade-up">
 
         <!-- Right Visual Identity Panel -->
-        <div class="lg:col-span-5 bg-gradient-to-b from-se-dark-blue to-se-extra-dark-blue text-white p-7 sm:p-10 flex flex-col justify-center relative overflow-hidden">
+        <div class="login-brand-panel lg:col-span-5 bg-gradient-to-b from-se-dark-blue to-se-extra-dark-blue text-white p-7 sm:p-10 flex flex-col justify-center relative overflow-hidden">
           <div class="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-l from-se-mid-blue via-se-light-blue to-se-green"></div>
           <div>
             <div class="flex items-center gap-3 mb-7">
@@ -63,39 +63,35 @@ export const LOGIN_VIEW_MARKUP = `
             </div>
             <div class="text-[11px] text-se-light-blue font-bold tracking-widest uppercase mb-1">Saudi Energy · الشركة السعودية للطاقة</div>
 
-            <h2 class="text-2xl sm:text-3xl font-black leading-snug mb-7">
-              بوابة رقمية موحّدة لمتابعة واعتماد فواتير المقاولين
+            <h2 class="login-brand-headline text-2xl sm:text-3xl font-black leading-snug mb-7">
+              من استلام الأصل إلى اعتماد الفاتورة — كل خطوة أوضح، وكل قرار أسرع
             </h2>
 
-            <div class="space-y-3 text-xs sm:text-sm">
+            <div class="login-brand-features space-y-3 text-xs sm:text-sm">
               <div class="flex items-center gap-3 bg-white/5 border border-white/10 rounded-xl p-3">
                 <div class="w-8 h-8 rounded-lg bg-se-mid-blue/20 text-se-light-blue flex items-center justify-center shrink-0">
                   <i data-lucide="shield-check" class="w-4 h-4"></i>
                 </div>
-                <span>شاشات معزولة لكل مقاول مع كشف تلقائي لتكرار أوامر العمل</span>
+                <span>مساحة مستقلة لكل مقاول، مع تنبيه استباقي لتكرار أوامر العمل</span>
               </div>
               <div class="flex items-center gap-3 bg-white/5 border border-white/10 rounded-xl p-3">
                 <div class="w-8 h-8 rounded-lg bg-se-light-blue/20 text-se-light-blue flex items-center justify-center shrink-0">
                   <i data-lucide="cloud-upload" class="w-4 h-4"></i>
                 </div>
-                <span>إرفاق صور الأعمال وأرشفتها</span>
+                <span>وثّق الإنجاز بالصور، واترك للأرشفة حفظ التفاصيل</span>
               </div>
               <div class="flex items-center gap-3 bg-white/5 border border-white/10 rounded-xl p-3">
                 <div class="w-8 h-8 rounded-lg bg-se-green/20 text-se-green flex items-center justify-center shrink-0">
                   <i data-lucide="bar-chart-3" class="w-4 h-4"></i>
                 </div>
-                <span>لوحة تحكم تنفيذية وتقارير PDF و Excel شاملة ومحدّثة</span>
+                <span>رؤية تشغيلية مباشرة، وتقارير جاهزة للقرار بصيغتي PDF وExcel</span>
               </div>
             </div>
-          </div>
-          <div class="mt-6 pt-5 border-t border-white/10 flex items-center gap-2 text-xs text-se-light-blue/80">
-            <span class="w-2 h-2 rounded-full bg-se-mid-blue animate-pulse"></span>
-            <span>بيانات مشفرة ومحمية — Firebase Firestore</span>
           </div>
         </div>
 
         <!-- Left Login Form Panel -->
-        <div class="lg:col-span-7 p-6 sm:p-10 flex flex-col justify-center bg-white">
+        <div class="login-form-panel lg:col-span-7 p-6 sm:p-10 flex flex-col justify-center bg-white">
           <div>
             <div class="mb-6">
               <h3 class="text-2xl font-extrabold text-se-dark-blue">تسجيل الدخول إلى المنصة</h3>
@@ -136,10 +132,7 @@ export const LOGIN_VIEW_MARKUP = `
               <div>
                 <div class="flex items-center justify-between mb-1.5">
                   <label class="block text-sm font-bold text-se-dark-blue">كلمة المرور</label>
-                  <button type="button" onclick="openResetPasswordModal()" class="text-xs font-bold text-se-mid-blue hover:text-se-dark-blue hover:underline flex items-center gap-1">
-                    <i data-lucide="key-round" class="w-3.5 h-3.5"></i>
-                    <span>إعادة تعيين كلمة المرور</span>
-                  </button>
+
                 </div>
                 <div class="relative">
                   <input type="password" id="staffPasswordInput" required placeholder="••••••••"
@@ -176,7 +169,7 @@ export const LOGIN_VIEW_MARKUP = `
               <div>
                 <label class="block text-sm font-bold text-se-dark-blue mb-1.5">الرقم السري للمقاول (PIN)</label>
                 <div class="relative">
-                  <input type="password" id="contractorPinInput" required placeholder="أدخل الرقم السري الخاص بالمقاول"
+                  <input type="password" id="contractorPinInput" required minlength="1" maxlength="12" inputmode="numeric" pattern="[0-9]{1,12}" placeholder="أدخل PIN الخاص بالمقاول"
                     class="w-full rounded-xl border border-slate-300 bg-slate-50 focus:bg-white focus:border-se-mid-blue focus:ring-2 focus:ring-se-mid-blue/20 py-3 pr-10 pl-4 text-sm font-semibold outline-none transition" />
                   <i data-lucide="lock" class="w-4 h-4 text-slate-400 absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none"></i>
                 </div>

@@ -1,4 +1,5 @@
-import { testConnection } from './firebase';
+import { onAuthStateChanged, signInWithCustomToken, signOut } from 'firebase/auth';
+import { auth } from './firebase';
 import {
   type AuditLogRecord,
   type ContractorRecord,
@@ -9,9 +10,9 @@ import {
   type DropboxCloudSettings,
   type StaffRole,
   type StaffUser,
-  ensureFirestoreSeeded,
   fsAddAuditLog,
   fsBulkApproveInvoices,
+  fsChangeOwnPassword,
   fsCreateContractor,
   fsCreateStaffUser,
   fsDeleteInvoice,
@@ -22,12 +23,9 @@ import {
   fsUpdateContractorPin,
   fsUpdateInvoicePhotos,
   fsUpdateInvoiceReview,
-  fsUpdateStaffPassword,
   fsUpdateStaffRole,
-  hashPassword,
   sanitizeId,
   subscribeAllCollections,
-  verifyPassword,
 } from './firestoreStore';
 import {
   CONSULTANTS,
@@ -36,7 +34,6 @@ import {
   QUICK_REVIEW_NOTES,
   WORK_DESCS,
   WORK_TYPES,
-  buildInitialSeedBundle,
 } from './seedData';
 import {
   type SessionInfo,
@@ -100,18 +97,19 @@ export function initPlatformEngine(onFatalError?: (err: Error) => void): () => v
   };
 
   let currentSession: SessionInfo | null = null;
+  let publicContractorNames: string[] = [];
+  let contractorNamesLoaded = false;
+  let contractorNamesRequest: Promise<void> | null = null;
   let currentStaffSection = 'dashboard';
   const selectedInvoiceIds = new Set<string>();
   let pendingPhotos: InvoicePhoto[] = [];
   let currentReviewId: string | null = null;
   let unsubFirestore: (() => void) | null = null;
   let destroyed = false;
-  let initialSnapshotsReady = {
-    staff: false,
-    contractors: false,
-    invoices: false,
-  };
   let bootHidden = false;
+  let bootHideTimer: ReturnType<typeof setTimeout> | null = null;
+  const bootStartedAt = Date.now();
+  const bootSplashDurationMs = 7000;
 
   const $ = <T extends HTMLElement = HTMLElement>(id: string) =>
     document.getElementById(id) as T | null;
@@ -211,9 +209,8 @@ export function initPlatformEngine(onFatalError?: (err: Error) => void): () => v
 
   // ==================== AUDIT LOG (FIRESTORE) ====================
   function logAudit(action: string, details: string): void {
-    const userLabel = currentSession
-      ? `${currentSession.name} (${currentSession.type === 'staff' ? currentSession.role : 'مقاول'})`
-      : 'النظام';
+    if (!currentSession || currentSession.type !== 'staff') return;
+    const userLabel = `${currentSession.name} (${currentSession.role})`;
     const entry: AuditLogRecord = {
       id: `log_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
       time: formatNow(),
@@ -366,28 +363,51 @@ export function initPlatformEngine(onFatalError?: (err: Error) => void): () => v
     const listEl = $('contractorDropdownList');
     if (!listEl) return;
     const q = filter.trim().toLowerCase();
-    const filtered = appState.contractors.filter((c) => c.name.toLowerCase().includes(q));
+    const filtered = publicContractorNames.filter((name) => name.toLowerCase().includes(q));
     if (!filtered.length) {
-      listEl.innerHTML = `<div class="p-3 text-xs text-slate-400 text-center">لا توجد نتائج مطابقة</div>`;
+      listEl.innerHTML = `<div class="p-3 text-xs text-slate-400 text-center">${contractorNamesLoaded ? 'لا توجد نتائج مطابقة' : 'جاري تحميل القائمة...'}</div>`;
       return;
     }
     listEl.innerHTML = filtered
       .map(
-        (c) => `
-      <button type="button" onclick="selectContractorFromList('${escapeHtml(c.name)}')"
-        class="w-full text-right px-4 py-2.5 text-sm font-semibold hover:bg-se-mid-blue/20 hover:text-se-blue flex items-center justify-between transition ${!c.active ? 'opacity-50' : ''}">
-        <span>${escapeHtml(c.name)}</span>
-        ${!c.active ? '<span class="text-[10px] bg-se-tertiary-red/20 text-se-tertiary-red px-2 py-0.5 rounded-full">موقوف</span>' : ''}
+        (name) => `
+      <button type="button" onclick="selectContractorFromList('${escapeHtml(name)}')"
+        class="w-full text-right px-4 py-2.5 text-sm font-semibold hover:bg-se-mid-blue/20 hover:text-se-blue transition">
+        <span>${escapeHtml(name)}</span>
       </button>
     `
       )
       .join('');
   }
 
-  function openContractorDropdown(): void {
+  async function loadPublicContractorNames(): Promise<void> {
+    if (contractorNamesLoaded) return;
+    if (!contractorNamesRequest) {
+      contractorNamesRequest = fetch('/api/auth/contractors', { cache: 'no-store' })
+        .then(async (response) => {
+          if (!response.ok) throw new Error('Unable to load contractor list.');
+          const result = (await response.json()) as { names?: unknown };
+          publicContractorNames = Array.isArray(result.names)
+            ? result.names.filter((name): name is string => typeof name === 'string')
+            : [];
+          contractorNamesLoaded = true;
+        })
+        .catch(() => {
+          showLoginError('تعذر تحميل قائمة المقاولين، يرجى إعادة المحاولة.');
+        })
+        .finally(() => {
+          contractorNamesRequest = null;
+          renderContractorDropdown($<HTMLInputElement>('contractorSearchInput')?.value || '');
+        });
+    }
+    await contractorNamesRequest;
+  }
+
+  async function openContractorDropdown(): Promise<void> {
     const inp = $<HTMLInputElement>('contractorSearchInput');
-    renderContractorDropdown(inp?.value || '');
     $('contractorDropdownList')?.classList.remove('hidden');
+    renderContractorDropdown(inp?.value || '');
+    await loadPublicContractorNames();
   }
 
   function toggleContractorDropdown(): void {
@@ -437,27 +457,24 @@ export function initPlatformEngine(onFatalError?: (err: Error) => void): () => v
     }, 3000);
   }
 
-  function openResetPasswordModal(isLoggedIn = false): void {
+  function openResetPasswordModal(): void {
     const userInp = $<HTMLInputElement>('rp_username');
     const curInp = $<HTMLInputElement>('rp_currentPass');
     const newInp = $<HTMLInputElement>('rp_newPass');
     const confInp = $<HTMLInputElement>('rp_confirmPass');
     if (!userInp || !curInp || !newInp || !confInp) return;
+    if (!currentSession || currentSession.type !== 'staff') {
+      showToast('سجّل الدخول أولاً لتغيير كلمة المرور بأمان.', 'info');
+      return;
+    }
 
+    userInp.value = currentSession.username || '';
+    userInp.readOnly = true;
+    userInp.classList.add('bg-slate-100', 'text-slate-500');
     curInp.value = '';
     newInp.value = '';
     confInp.value = '';
     $('rp_error')?.classList.add('hidden');
-
-    if (isLoggedIn && currentSession && currentSession.type === 'staff') {
-      userInp.value = currentSession.username || '';
-      userInp.readOnly = true;
-      userInp.classList.add('bg-slate-100', 'text-slate-500');
-    } else {
-      userInp.value = $<HTMLInputElement>('staffUsernameInput')?.value.trim() || '';
-      userInp.readOnly = false;
-      userInp.classList.remove('bg-slate-100', 'text-slate-500');
-    }
     $('resetPassModal')?.classList.remove('hidden');
     refreshLucideIcons();
   }
@@ -477,18 +494,12 @@ export function initPlatformEngine(onFatalError?: (err: Error) => void): () => v
       }
     };
 
-    const staff = appState.staffUsers.find((u) => u.username.toLowerCase() === username);
-    if (!staff) {
-      showErr('الرقم الوظيفي غير مسجّل في قاعدة البيانات.');
+    if (!currentSession || currentSession.type !== 'staff' || username !== currentSession.username) {
+      showErr('سجّل الدخول إلى حساب الموظف لتغيير كلمة المرور.');
       return;
     }
-    const valid = await verifyPassword(currentPass, staff.passwordHash);
-    if (!valid) {
-      showErr('كلمة المرور الحالية غير صحيحة.');
-      return;
-    }
-    if (newPass.length < 4) {
-      showErr('يجب أن تكون كلمة المرور الجديدة 4 خانات على الأقل.');
+    if (newPass.length < 10) {
+      showErr('يجب أن تتكون كلمة المرور الجديدة من 10 خانات على الأقل.');
       return;
     }
     if (newPass !== confirmPass) {
@@ -497,18 +508,48 @@ export function initPlatformEngine(onFatalError?: (err: Error) => void): () => v
     }
 
     try {
-      const newHash = await hashPassword(newPass);
-      await fsUpdateStaffPassword(staff.username, newHash);
-      staff.passwordHash = newHash;
-      logAudit('إعادة تعيين كلمة المرور', `تم تحديث كلمة المرور للموظف: ${staff.name} (${staff.username})`);
+      await fsChangeOwnPassword(currentPass, newPass);
+      logAudit('تغيير كلمة المرور', `تم تحديث كلمة المرور للموظف: ${currentSession.name} (${currentSession.username})`);
       closeModal('resetPassModal');
-      showToast('تم تحديث كلمة المرور وحفظها في قاعدة بيانات Firestore بنجاح', 'success');
-    } catch {
-      showErr('تعذر تحديث كلمة المرور في قاعدة البيانات، يرجى المحاولة مجدداً.');
+      showToast('تم تحديث كلمة المرور بأمان.', 'success');
+    } catch (error) {
+      showErr(error instanceof Error ? error.message : 'تعذر تحديث كلمة المرور حالياً.');
     }
   }
 
-  function handleContractorLogin(e: Event): void {
+  async function prepareSecurity(): Promise<void> {
+    for (let attempt = 0; attempt < 8; attempt += 1) {
+      const response = await fetch('/api/auth/prepare', {
+        method: 'POST',
+        cache: 'no-store',
+      });
+      const result = (await response.json().catch(() => ({}))) as { error?: string };
+      if (response.status === 202) {
+        await new Promise((resolve) => setTimeout(resolve, 500));
+        continue;
+      }
+      if (!response.ok) throw new Error(result.error || 'تعذر تهيئة حماية قاعدة البيانات.');
+      return;
+    }
+    throw new Error('ما زالت حماية قاعدة البيانات قيد التهيئة. حاول مجدداً بعد قليل.');
+  }
+
+  async function submitLoginCredentials(payload: Record<string, string>): Promise<void> {
+    await prepareSecurity();
+    const response = await fetch('/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      cache: 'no-store',
+      body: JSON.stringify(payload),
+    });
+    const result = (await response.json().catch(() => ({}))) as { customToken?: string; error?: string };
+    if (!response.ok || !result.customToken) {
+      throw new Error(result.error || 'تعذر تسجيل الدخول حالياً.');
+    }
+    await signInWithCustomToken(auth, result.customToken);
+  }
+
+  async function handleContractorLogin(e: Event): Promise<void> {
     e.preventDefault();
     const name = (
       $<HTMLInputElement>('selectedContractorValue')?.value ||
@@ -516,61 +557,45 @@ export function initPlatformEngine(onFatalError?: (err: Error) => void): () => v
       ''
     ).trim();
     const pin = ($<HTMLInputElement>('contractorPinInput')?.value || '').trim();
-
-    const found = appState.contractors.find((c) => c.name === name);
-    if (!found) {
-      showLoginError('يرجى اختيار اسم مقاول صحيح من القائمة المنسدلة.');
-      return;
-    }
-    if (!found.active) {
-      showLoginError('تم إيقاف حساب هذا المقاول مؤقتاً، يرجى مراجعة القسم.');
-      return;
-    }
-    if (found.pin !== pin) {
-      showLoginError('الرقم السري (PIN) غير صحيح.');
+    if (!name || !pin) {
+      showLoginError('اختر اسم المقاول وأدخل الرقم السري.');
       return;
     }
 
-    currentSession = { type: 'contractor', name: found.name, role: 'contractor' };
-    logAudit('تسجيل دخول', `دخول المقاول: ${found.name}`);
-    showWelcomeSplash(found.name, 'جاري فتح بوابة المقاول الخاصة بك...', () => {
-      enterContractorPortal();
-    });
+    try {
+      await submitLoginCredentials({ type: 'contractor', name, pin });
+    } catch (error) {
+      showLoginError(error instanceof Error ? error.message : 'تعذر تسجيل الدخول حالياً.');
+    }
   }
 
   async function handleStaffLogin(e: Event): Promise<void> {
     e.preventDefault();
-    const user = ($<HTMLInputElement>('staffUsernameInput')?.value || '').trim().toLowerCase();
-    const pass = ($<HTMLInputElement>('staffPasswordInput')?.value || '').trim();
-
-    const found = appState.staffUsers.find((u) => u.username.toLowerCase() === user);
-    if (!found) {
-      showLoginError('الرقم الوظيفي أو كلمة المرور غير صحيحة.');
-      return;
-    }
-    const ok = await verifyPassword(pass, found.passwordHash);
-    if (!ok) {
-      showLoginError('الرقم الوظيفي أو كلمة المرور غير صحيحة.');
+    const username = ($<HTMLInputElement>('staffUsernameInput')?.value || '').trim();
+    const password = ($<HTMLInputElement>('staffPasswordInput')?.value || '').trim();
+    if (!username || !password) {
+      showLoginError('أدخل الرقم الوظيفي وكلمة المرور.');
       return;
     }
 
-    currentSession = {
-      type: 'staff',
-      name: found.name,
-      username: found.username,
-      role: found.role,
-    };
-    logAudit('تسجيل دخول', `دخول موظف الشركة: ${found.name} (${found.username})`);
-    showWelcomeSplash(found.name, `الرقم الوظيفي: ${found.username} — جاري فتح لوحة التحكم...`, () => {
-      enterStaffPortal();
-    });
+    try {
+      await submitLoginCredentials({ type: 'staff', username, password });
+    } catch (error) {
+      showLoginError(error instanceof Error ? error.message : 'تعذر تسجيل الدخول حالياً.');
+    }
   }
 
-  function logout(): void {
-    if (currentSession) {
-      logAudit('تسجيل خروج', `خروج: ${currentSession.name}`);
+  async function logout(): Promise<void> {
+    if (currentSession) logAudit('تسجيل خروج', `خروج: ${currentSession.name}`);
+    if (unsubFirestore) {
+      unsubFirestore();
+      unsubFirestore = null;
     }
     currentSession = null;
+    appState.invoices = [];
+    appState.contractors = [];
+    appState.staffUsers = [];
+    appState.auditLog = [];
     selectedInvoiceIds.clear();
     dashCtrl.resetActiveKpi();
     $('contractorView')?.classList.add('hidden');
@@ -581,6 +606,7 @@ export function initPlatformEngine(onFatalError?: (err: Error) => void): () => v
     if (cPin) cPin.value = '';
     if (sPass) sPass.value = '';
     $('loginErrorBox')?.classList.add('hidden');
+    await signOut(auth);
     refreshLucideIcons();
   }
 
@@ -1050,10 +1076,15 @@ export function initPlatformEngine(onFatalError?: (err: Error) => void): () => v
 
     const isViewer = currentSession.role === 'viewer';
     const isAdmin = currentSession.username === '100889' || currentSession.role === 'admin';
+    const canManageCloudArchive = currentSession.username === '100889';
     $('staffAddInvBtn')?.classList.toggle('hidden', isViewer);
     document.querySelector('[data-sec="users"]')?.classList.toggle('hidden', !isAdmin);
+    document.querySelector('[data-sec="onedrive"]')?.classList.toggle('hidden', !canManageCloudArchive);
 
     if (!isAdmin && currentStaffSection === 'users') {
+      switchStaffSection('dashboard');
+    }
+    if (!canManageCloudArchive && currentStaffSection === 'onedrive') {
       switchStaffSection('dashboard');
     }
   }
@@ -1086,6 +1117,9 @@ export function initPlatformEngine(onFatalError?: (err: Error) => void): () => v
   }
 
   function switchStaffSection(sec: string): void {
+    if (sec === 'onedrive' && currentSession?.username !== '100889') {
+      sec = 'dashboard';
+    }
     currentStaffSection = sec;
     const titles: Record<string, string> = {
       dashboard: 'لوحة التحكم التنفيذية (Dashboard)',
@@ -1229,7 +1263,7 @@ export function initPlatformEngine(onFatalError?: (err: Error) => void): () => v
                   !isViewer
                     ? `
                   <button onclick="openStaffInvoiceModal('${escapeHtml(inv.id)}')" title="تعديل" class="p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-se-dark-blue"><i data-lucide="edit-3" class="w-3.5 h-3.5"></i></button>
-                  <button onclick="deleteInvoice('${escapeHtml(inv.id)}')" title="حذف" class="p-1.5 rounded-lg bg-rose-50 hover:bg-rose-600 text-rose-600 hover:text-white transition"><i data-lucide="trash-2" class="w-3.5 h-3.5"></i></button>
+                  ${currentSession?.role === 'admin' ? `<button onclick="deleteInvoice('${escapeHtml(inv.id)}')" title="حذف" class="p-1.5 rounded-lg bg-rose-50 hover:bg-rose-600 text-rose-600 hover:text-white transition"><i data-lucide="trash-2" class="w-3.5 h-3.5"></i></button>` : ''}
                 `
                     : ''
                 }
@@ -1529,7 +1563,7 @@ export function initPlatformEngine(onFatalError?: (err: Error) => void): () => v
           (c) => `
         <tr class="hover:bg-slate-50">
           <td class="py-2.5 px-4 font-bold text-se-dark-blue">${escapeHtml(c.name)}</td>
-          <td class="py-2.5 px-3 font-mono font-bold text-slate-600">${escapeHtml(c.pin)}</td>
+          <td class="py-2.5 px-3 text-xs text-slate-500">غير معروض لأسباب أمنية</td>
           <td class="py-2.5 px-3">
             <span class="px-2 py-0.5 rounded-full text-[11px] font-bold ${c.active ? 'bg-emerald-100 text-emerald-800' : 'bg-se-tertiary-red/20 text-se-tertiary-red'}">${c.active ? 'نشط' : 'موقوف'}</span>
           </td>
@@ -1599,8 +1633,7 @@ export function initPlatformEngine(onFatalError?: (err: Error) => void): () => v
       title: 'تعديل الرقم السري للمقاول',
       message: `أدخل الرقم السري (PIN) الجديد لحساب: ${c.name}`,
       withInput: true,
-      defaultValue: c.pin,
-      placeholder: 'مثال: 5588',
+      placeholder: 'أدخل PIN جديداً من 8 أرقام على الأقل',
       onConfirm: async (newPin) => {
         if (!newPin) return;
         try {
@@ -1630,7 +1663,7 @@ export function initPlatformEngine(onFatalError?: (err: Error) => void): () => v
   function addNewContractorPrompt(): void {
     openConfirmModal({
       title: 'إضافة مقاول جديد للمنصة',
-      message: 'أدخل اسم الشركة أو المؤسسة الجديدة (سيكون الرقم السري الافتراضي 1234):',
+      message: 'أدخل اسم الشركة أو المؤسسة. سيتم إنشاء PIN عشوائي قوي وعرضه مرة واحدة بعد الحفظ.',
       withInput: true,
       placeholder: 'مثال: شركة النور للمقاولات الكهربائية',
       onConfirm: async (name) => {
@@ -1639,16 +1672,21 @@ export function initPlatformEngine(onFatalError?: (err: Error) => void): () => v
           showToast('هذا المقاول مسجل مسبقاً', 'warning');
           return;
         }
+        const pinBytes = new Uint32Array(1);
+        crypto.getRandomValues(pinBytes);
+        const initialPin = String(pinBytes[0] % 100000000).padStart(8, '0');
         try {
           await fsCreateContractor({
             id: `ctr_${Date.now()}`,
             name,
-            pin: '1234',
             active: true,
             updatedAt: new Date().toISOString(),
-          });
+          }, initialPin);
           logAudit('إضافة مقاول', `تمت إضافة المقاول: ${name}`);
-          showToast(`تمت إضافة ${name} وحفظه في Firestore بنجاح`, 'success');
+          openConfirmModal({
+            title: 'تم إنشاء حساب المقاول',
+            message: `الرقم السري الأولي لـ ${name}: ${initialPin}. احفظه وشاركه مع المقاول الآن؛ لن يظهر مجدداً.`,
+          });
         } catch {
           showToast('تعذر إضافة المقاول في قاعدة البيانات', 'error');
         }
@@ -1660,26 +1698,28 @@ export function initPlatformEngine(onFatalError?: (err: Error) => void): () => v
     e.preventDefault();
     const form = e.target as HTMLFormElement;
     const name = ($<HTMLInputElement>('newStaffName')?.value || '').trim();
-    const username = sanitizeId(($<HTMLInputElement>('newStaffUser')?.value || '').trim());
+    const username = sanitizeId(($<HTMLInputElement>('newStaffUser')?.value || '').trim()).toLowerCase();
     const password = ($<HTMLInputElement>('newStaffPass')?.value || '').trim();
     const role = ($<HTMLSelectElement>('newStaffRole')?.value || 'reviewer') as StaffRole;
 
     if (!name || !username || !password) return;
+    if (password.length < 10) {
+      showToast('كلمة المرور يجب أن تتكون من 10 خانات على الأقل.', 'warning');
+      return;
+    }
     if (appState.staffUsers.some((u) => u.username.toLowerCase() === username.toLowerCase())) {
       showToast('اسم المستخدم موجود مسبقاً', 'error');
       return;
     }
 
     try {
-      const passwordHash = await hashPassword(password);
       await fsCreateStaffUser({
         id: `st_${Date.now()}`,
         name,
         username,
-        passwordHash,
         role,
         updatedAt: new Date().toISOString(),
-      });
+      }, password);
       logAudit('إضافة موظف', `حساب جديد: ${name} (${username})`);
       form.reset();
       showToast('تم إنشاء حساب الموظف وحفظه في Firestore بنجاح', 'success');
@@ -2499,16 +2539,22 @@ export function initPlatformEngine(onFatalError?: (err: Error) => void): () => v
   }
 
   function maybeHideBootOverlay(): void {
-    if (bootHidden) return;
-    if (
-      initialSnapshotsReady.staff &&
-      initialSnapshotsReady.contractors &&
-      initialSnapshotsReady.invoices
-    ) {
-      bootHidden = true;
-      $('dbBootOverlay')?.classList.add('hidden');
-      refreshLucideIcons();
+    if (bootHidden || destroyed) return;
+
+    const remainingMs = bootSplashDurationMs - (Date.now() - bootStartedAt);
+    if (remainingMs > 0) {
+      if (!bootHideTimer) {
+        bootHideTimer = setTimeout(() => {
+          bootHideTimer = null;
+          maybeHideBootOverlay();
+        }, remainingMs);
+      }
+      return;
     }
+
+    bootHidden = true;
+    $('dbBootOverlay')?.classList.add('hidden');
+    refreshLucideIcons();
   }
 
   // ==================== WINDOW GLOBAL HANDLERS ====================
@@ -2594,94 +2640,136 @@ export function initPlatformEngine(onFatalError?: (err: Error) => void): () => v
   };
   document.addEventListener('click', handleDocClick);
 
+  function startSessionSubscriptions(session: SessionInfo): void {
+    unsubFirestore = subscribeAllCollections({
+      onStaff: (staff) => {
+        appState.staffUsers = staff;
+        maybeHideBootOverlay();
+        refreshActiveView();
+      },
+      onContractors: (contractors) => {
+        appState.contractors = contractors;
+        refreshDynamicContractorSelects();
+        maybeHideBootOverlay();
+        refreshActiveView();
+      },
+      onInvoices: (invoices) => {
+        appState.invoices = invoices;
+        refreshDynamicMonthSelect();
+        maybeHideBootOverlay();
+        refreshActiveView();
+      },
+      onAuditLogs: (logs) => {
+        appState.auditLog = logs;
+        if (currentSession?.type === 'staff' && currentStaffSection === 'users') {
+          renderUsersManagement();
+        }
+      },
+      onOneDrive: (settings) => {
+        appState.dropbox = {
+          ...settings,
+          appSecret: settings.appSecret || appState.dropbox.appSecret,
+          refreshToken: settings.refreshToken || appState.dropbox.refreshToken,
+          tokenExpiresAt: appState.dropbox.tokenExpiresAt || 0,
+        };
+        updateDropboxBadges();
+        updateDropboxExpiryHint();
+        scheduleDropboxTokenRefresh();
+        if (currentSession?.type === 'staff' && currentStaffSection === 'onedrive') {
+          renderDropboxModule();
+        }
+      },
+      onError: (err) => {
+        console.error('Firestore subscription error:', err);
+        onFatalError?.(err);
+      },
+    }, session);
+
+    if (session.type === 'staff' && session.role === 'admin' && window.location.hash.includes('access_token=')) {
+      const params = new URLSearchParams(window.location.hash.slice(1));
+      const token = params.get('access_token');
+      if (token) {
+        appState.dropbox.accessToken = token;
+        window.history.replaceState(null, '', window.location.pathname);
+        void testDropboxConnection();
+      }
+    }
+  }
+
+  async function handleAuthState(user: import('firebase/auth').User | null): Promise<void> {
+    if (destroyed) return;
+    if (unsubFirestore) {
+      unsubFirestore();
+      unsubFirestore = null;
+    }
+
+    if (!user) {
+      currentSession = null;
+      appState.invoices = [];
+      appState.contractors = [];
+      appState.staffUsers = [];
+      appState.auditLog = [];
+      $('contractorView')?.classList.add('hidden');
+      $('staffView')?.classList.add('hidden');
+      $('loginView')?.classList.remove('hidden');
+      return;
+    }
+
+    try {
+      const token = await user.getIdToken();
+      const response = await fetch('/api/auth/session', {
+        headers: { Authorization: `Bearer ${token}` },
+        cache: 'no-store',
+      });
+      const result = (await response.json().catch(() => ({}))) as {
+        session?: SessionInfo;
+        error?: string;
+      };
+      if (response.status === 401) {
+        await signOut(auth);
+        return;
+      }
+      if (!response.ok || !result.session) throw new Error(result.error || 'تعذر التحقق من الجلسة.');
+
+      currentSession = result.session;
+      appState.invoices = [];
+      appState.contractors = [];
+      appState.staffUsers = [];
+      appState.auditLog = [];
+      appState.dropbox = {
+        ...dropboxConfig,
+        accessToken: result.session.type === 'staff' && result.session.role === 'admin' ? getLocalDropboxToken() : '',
+        appSecret: '',
+        refreshToken: '',
+      };
+      $('loginView')?.classList.add('hidden');
+      if (result.session.type === 'contractor') {
+        $('staffView')?.classList.add('hidden');
+        enterContractorPortal();
+      } else {
+        $('contractorView')?.classList.add('hidden');
+        enterStaffPortal();
+      }
+      startSessionSubscriptions(result.session);
+      refreshActiveView();
+    } catch (error) {
+      if (!destroyed) showToast(error instanceof Error ? error.message : 'تعذر استعادة الجلسة.', 'error');
+    }
+  }
+
   // ==================== FIRESTORE BOOTSTRAP ====================
   populateStaticSelects();
   refreshLucideIcons();
-
-  (async () => {
-    const bootText = $('dbBootStatusText');
-    try {
-      if (bootText) bootText.textContent = 'جاري التحقق من الاتصال بخادم Firestore...';
-      await testConnection();
-
-      if (destroyed) return;
-      await ensureFirestoreSeeded(buildInitialSeedBundle, (msg) => {
-        if (bootText) bootText.textContent = msg;
-      });
-
-      if (destroyed) return;
-      if (bootText) bootText.textContent = 'جاري تحميل البيانات والمستخدمين والصلاحيات...';
-
-      unsubFirestore = subscribeAllCollections({
-        onStaff: (staff) => {
-          appState.staffUsers = staff;
-          initialSnapshotsReady.staff = true;
-          maybeHideBootOverlay();
-          refreshActiveView();
-        },
-        onContractors: (contractors) => {
-          appState.contractors = contractors;
-          initialSnapshotsReady.contractors = true;
-          refreshDynamicContractorSelects();
-          maybeHideBootOverlay();
-          refreshActiveView();
-        },
-        onInvoices: (invoices) => {
-          appState.invoices = invoices;
-          initialSnapshotsReady.invoices = true;
-          refreshDynamicMonthSelect();
-          maybeHideBootOverlay();
-          refreshActiveView();
-        },
-        onAuditLogs: (logs) => {
-          appState.auditLog = logs;
-          if (currentSession?.type === 'staff' && currentStaffSection === 'users') {
-            renderUsersManagement();
-          }
-        },
-        onOneDrive: (settings) => {
-          appState.dropbox = {
-            ...settings,
-            appSecret: settings.appSecret || appState.dropbox.appSecret,
-            refreshToken: settings.refreshToken || appState.dropbox.refreshToken,
-            accessToken: appState.dropbox.accessToken || getLocalDropboxToken(),
-            tokenExpiresAt: appState.dropbox.tokenExpiresAt || 0,
-          };
-          updateDropboxBadges();
-          updateDropboxExpiryHint();
-          scheduleDropboxTokenRefresh();
-          if (currentSession?.type === 'staff' && currentStaffSection === 'onedrive') {
-            renderDropboxModule();
-          }
-        },
-        onError: (err) => {
-          console.error('Firestore subscription error:', err);
-          onFatalError?.(err);
-        },
-      });
-
-      // Check OAuth token return from Dropbox OAuth
-      if (window.location.hash && window.location.hash.includes('access_token=')) {
-        const params = new URLSearchParams(window.location.hash.substring(1));
-        const token = params.get('access_token');
-        if (token) {
-          appState.dropbox.accessToken = token;
-          setLocalDropboxToken(token);
-          window.history.replaceState(null, '', window.location.pathname);
-          void testDropboxConnection();
-        }
-      }
-    } catch (err) {
-      console.error('Firestore initialization error:', err);
-      if (!destroyed) {
-        onFatalError?.(err instanceof Error ? err : new Error(String(err)));
-      }
-    }
-  })();
+  maybeHideBootOverlay();
+  const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
+    void handleAuthState(user);
+  });
 
   return () => {
     destroyed = true;
+    if (bootHideTimer) clearTimeout(bootHideTimer);
     document.removeEventListener('click', handleDocClick);
+    unsubscribeAuth();
     if (unsubFirestore) unsubFirestore();
     dashCtrl.destroyAllCharts();
   };

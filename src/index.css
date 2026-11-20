@@ -72,6 +72,185 @@ body {
   font-family: 'Cairo', sans-serif;
   background-color: #F2F3F5;
   color: #00183A;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  scroll-behavior: smooth;
+}
+
+:focus-visible {
+  outline: 3px solid #32C2FF;
+  outline-offset: 3px;
+}
+
+::selection { background: rgba(0, 128, 255, .2); color: #00183A; }
+
+/* Refined enterprise surfaces and motion, layered over the existing brand system. */
+#loginView {
+  background-image: radial-gradient(ellipse at 20% 15%, rgba(50, 194, 255, .16), transparent 32%),
+    radial-gradient(ellipse at 72% 38%, rgba(0, 128, 255, .12), transparent 38%),
+    linear-gradient(145deg, #001329 0%, #00183A 40%, #0027B9 100%);
+}
+
+#dbBootOverlay {
+  overflow: hidden;
+  background: radial-gradient(ellipse at 50% 42%, rgba(0, 128, 255, .28), transparent 38%),
+    radial-gradient(ellipse at 15% 85%, rgba(0, 255, 134, .10), transparent 26%),
+    linear-gradient(145deg, #001329 0%, #00183A 52%, #00216b 100%);
+}
+
+.boot-card {
+  background: linear-gradient(145deg, rgba(255,255,255,.12), rgba(255,255,255,.035));
+  box-shadow: 0 35px 100px rgba(0, 7, 30, .42), inset 0 1px rgba(255,255,255,.12);
+  backdrop-filter: blur(20px);
+  animation: platformEnter .75s cubic-bezier(.2,.75,.25,1) both;
+}
+
+.boot-card::before {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at 50% -10%, rgba(50,194,255,.18), transparent 58%);
+  content: "";
+  pointer-events: none;
+}
+
+.boot-orbit {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: min(78vw, 520px);
+  aspect-ratio: 1;
+  border: 1px solid rgba(255,255,255,.07);
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
+.boot-orbit::before, .boot-orbit::after {
+  position: absolute;
+  inset: 12%;
+  border: 1px solid rgba(50,194,255,.1);
+  border-radius: inherit;
+  content: "";
+}
+.boot-orbit::after { inset: 25%; border-color: rgba(0,255,134,.08); }
+.boot-orbit span {
+  position: absolute;
+  top: 18%;
+  left: 19%;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #32c2ff;
+  box-shadow: 0 0 18px 4px rgba(50,194,255,.45);
+}
+.boot-orbit span:nth-child(2) { top: 78%; left: 75%; width: 5px; height: 5px; background: #00ff86; }
+.boot-orbit span:nth-child(3) { top: 31%; left: 83%; width: 4px; height: 4px; }
+
+.boot-progress {
+  height: 3px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(255,255,255,.13);
+}
+.boot-progress span {
+  display: block;
+  width: 42%;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #0080ff, #32c2ff, #00ff86);
+  box-shadow: 0 0 16px rgba(50,194,255,.65);
+  animation: bootProgress 1.8s ease-in-out infinite alternate;
+}
+@keyframes bootProgress { from { transform: translateX(-8%); } to { transform: translateX(150%); } }
+
+#loginView > .relative.z-10 {
+  border-radius: 1.75rem;
+  box-shadow: 0 32px 90px rgba(0, 12, 45, .34), 0 8px 24px rgba(0, 31, 94, .16);
+  animation: platformEnter .65s cubic-bezier(.2,.75,.25,1) both;
+}
+
+#loginView input,
+#contractorView input,
+#staffView input,
+#staffView select,
+#contractorView select,
+#staffView textarea,
+#contractorView textarea {
+  transition: border-color .2s ease, box-shadow .2s ease, background-color .2s ease;
+}
+
+#loginView input:focus,
+#contractorView input:focus,
+#staffView input:focus,
+#staffView select:focus,
+#contractorView select:focus,
+#staffView textarea:focus,
+#contractorView textarea:focus {
+  box-shadow: 0 0 0 4px rgba(0, 128, 255, .12);
+}
+
+#staffView:not(.hidden), #contractorView:not(.hidden) {
+  animation: platformEnter .5s cubic-bezier(.2,.75,.25,1) both;
+}
+
+#staffView main > section,
+#staffView main > div,
+#contractorView main > section,
+#contractorView main > div {
+  animation: platformEnter .45s cubic-bezier(.2,.75,.25,1) both;
+}
+
+#staffView .bg-white.rounded-2xl,
+#contractorView .bg-white.rounded-2xl,
+#staffView main .bg-white.rounded-xl,
+#staffView main .bg-white.rounded-3xl {
+  border-color: rgba(0, 31, 94, .09);
+  box-shadow: 0 5px 20px rgba(0, 31, 94, .045);
+  transition: transform .24s ease, box-shadow .24s ease, border-color .24s ease;
+}
+
+#staffView main .bg-white.rounded-2xl:hover,
+#contractorView main .bg-white.rounded-2xl:hover {
+  border-color: rgba(0, 128, 255, .2);
+  box-shadow: 0 12px 30px rgba(0, 31, 94, .09);
+}
+
+#staffView button,
+#contractorView button,
+#loginView button {
+  transition: transform .18s ease, box-shadow .18s ease, background-color .18s ease, border-color .18s ease;
+}
+
+#staffView button:active,
+#contractorView button:active,
+#loginView button:active { transform: scale(.985); }
+
+#staffSidebar { box-shadow: -12px 0 36px rgba(0, 16, 52, .14); }
+#staffView header, #contractorView header { backdrop-filter: saturate(150%) blur(14px); }
+
+@keyframes platformEnter {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@media (prefers-color-scheme: dark) {
+  body { background-color: #081426; color: #e8eef8; }
+  #staffView, #contractorView { background-color: #081426; }
+  #staffView header.bg-white, #contractorView header.bg-white { background-color: #101f34; border-color: rgba(148, 163, 184, .16); }
+  #staffView main .bg-white, #contractorView main .bg-white { background-color: #101f34; color: #e8eef8; border-color: rgba(148, 163, 184, .16); }
+  #staffView main .bg-slate-50, #contractorView main .bg-slate-50,
+  #staffView main .bg-slate-100, #contractorView main .bg-slate-100 { background-color: #172840; }
+  #staffView main .text-se-dark-blue, #contractorView main .text-se-dark-blue { color: #b9d9ff; }
+  #staffView main .text-slate-500, #contractorView main .text-slate-500,
+  #staffView main .text-slate-600, #contractorView main .text-slate-600 { color: #aab9ce; }
+  #staffView main .border-slate-100, #contractorView main .border-slate-100,
+  #staffView main .border-slate-200, #contractorView main .border-slate-200 { border-color: rgba(148, 163, 184, .16); }
+  #staffView input, #staffView select, #staffView textarea,
+  #contractorView input, #contractorView select, #contractorView textarea { background-color: #0d1b2e; color: #e8eef8; border-color: #34455e; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
 }
 
 ::-webkit-scrollbar {
@@ -122,7 +301,17 @@ body {
 }
 
 .animate-welcome-bar {
-  animation: welcomeProgress 3s linear forwards;
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(90deg, #0080FF 0%, #32C2FF 32%, #00FF86 66%, #0080FF 100%);
+  background-size: 220% 100%;
+  box-shadow: 0 0 18px rgba(50, 194, 255, .48);
+  animation: welcomeProgress 3s linear forwards, currentStream 1.1s linear infinite;
+}
+
+@keyframes currentStream {
+  from { background-position: 100% 50%; }
+  to { background-position: -120% 50%; }
 }
 
 @media print {
@@ -208,4 +397,67 @@ body {
 }
 .border-se-gradient {
   border-image: var(--color-se-full-gradient) 1;
+}
+
+@media (max-width: 639px) {
+  #loginView {
+    align-items: flex-start;
+    min-height: 100svh;
+    min-height: 100dvh;
+    padding: max(1rem, env(safe-area-inset-top)) 1rem max(1rem, env(safe-area-inset-bottom));
+  }
+
+  #loginView > .relative.z-10 {
+    display: flex;
+    flex-direction: column-reverse;
+    border-radius: 1.25rem;
+  }
+
+  #loginView .login-form-panel {
+    padding: 1.25rem;
+  }
+
+  #loginView .login-form-panel h3 {
+    font-size: 1.35rem;
+  }
+
+  #loginView .login-form-panel input {
+    min-height: 46px;
+  }
+
+  #loginView .login-form-panel button {
+    min-height: 44px;
+  }
+
+  #loginView .login-brand-panel {
+    padding: 1rem 1.25rem;
+  }
+
+  #loginView .login-brand-headline {
+    margin: .75rem 0 0;
+    font-size: 1.125rem;
+  }
+
+  #loginView .login-brand-features {
+    display: none;
+  }
+
+  #staffSidebar {
+    height: 100dvh;
+  }
+
+  #staffView header > div:first-child {
+    min-width: 0;
+  }
+
+  #staffView main,
+  #contractorView main {
+    min-width: 0;
+  }
+
+  #staffView main .overflow-auto,
+  #contractorView main .overflow-auto {
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+  }
 }

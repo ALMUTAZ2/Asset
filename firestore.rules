@@ -1,52 +1,73 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Global default-deny safety net
-    match /{document=**} {
-      allow read, write: if false;
-    }
-
-    // ==================== PRIMITIVE HELPERS ====================
     function isValidId(id) {
       return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
     }
 
-    function incoming() {
-      return request.resource.data;
+    function isValidString(value, minLength, maxLength) {
+      return value is string && value.size() >= minLength && value.size() <= maxLength;
     }
 
-    function existing() {
-      return resource.data;
+    function staffPath() {
+      return /databases/$(database)/documents/staff_users/$(request.auth.token.username);
     }
 
-    function isValidString(val, minLen, maxLen) {
-      return val is string && val.size() >= minLen && val.size() <= maxLen;
+    function contractorPath() {
+      return /databases/$(database)/documents/contractors/$(request.auth.token.contractorId);
     }
 
-    // ==================== VALIDATION BLUEPRINTS ====================
+    function isStaff() {
+      return request.auth != null
+        && request.auth.token.type == 'staff'
+        && request.auth.token.username is string
+        && request.auth.uid == 'staff_' + request.auth.token.username
+        && exists(staffPath());
+    }
+
+    function staffRole() {
+      return get(staffPath()).data.role;
+    }
+
+    function isAdmin() {
+      return isStaff() && staffRole() == 'admin';
+    }
+
+    function canEditInvoices() {
+      return isStaff() && staffRole() in ['admin', 'reviewer'];
+    }
+
+    function isContractor() {
+      return request.auth != null
+        && request.auth.token.type == 'contractor'
+        && request.auth.token.contractorId is string
+        && request.auth.uid == 'contractor_' + request.auth.token.contractorId
+        && exists(contractorPath())
+        && get(contractorPath()).data.active == true
+        && get(contractorPath()).data.name == request.auth.token.name;
+    }
+
     function isValidStaffUser(data) {
-      return data.keys().hasAll(['id', 'name', 'username', 'passwordHash', 'role', 'updatedAt'])
-        && data.keys().hasOnly(['id', 'name', 'username', 'passwordHash', 'role', 'updatedAt'])
+      return data.keys().hasAll(['id', 'name', 'username', 'role', 'updatedAt'])
+        && data.keys().hasOnly(['id', 'name', 'username', 'role', 'updatedAt'])
         && isValidId(data.id)
         && isValidString(data.name, 1, 120)
         && isValidId(data.username)
         && data.username.size() <= 64
-        && isValidString(data.passwordHash, 16, 128)
         && data.role in ['admin', 'reviewer', 'viewer']
         && isValidString(data.updatedAt, 1, 64);
     }
 
     function isValidContractor(data) {
-      return data.keys().hasAll(['id', 'name', 'pin', 'active', 'updatedAt'])
-        && data.keys().hasOnly(['id', 'name', 'pin', 'active', 'updatedAt'])
+      return data.keys().hasAll(['id', 'name', 'active', 'updatedAt'])
+        && data.keys().hasOnly(['id', 'name', 'active', 'updatedAt'])
         && isValidId(data.id)
         && isValidString(data.name, 1, 150)
-        && isValidString(data.pin, 1, 32)
         && data.active is bool
         && isValidString(data.updatedAt, 1, 64);
     }
 
-    function isValidPhotosList(photos) {
+    function isValidPhotos(photos) {
       return photos is list
         && photos.size() <= 8
         && (photos.size() == 0 || photos[0] is map);
@@ -79,7 +100,7 @@ service cloud.firestore {
         && data.status in ['معتمد', 'قيد المراجعة', 'ملاحظات معلقة', 'مرفوض']
         && isValidString(data.quality, 0, 80)
         && data.checklist is map
-        && isValidPhotosList(data.photos)
+        && isValidPhotos(data.photos)
         && isValidString(data.updatedAt, 1, 64);
     }
 
@@ -99,115 +120,105 @@ service cloud.firestore {
         && data.keys().hasOnly(['clientId', 'tenantId', 'baseFolder', 'connectedUser', 'updatedAt'])
         && isValidString(data.clientId, 0, 128)
         && isValidString(data.tenantId, 0, 128)
-        && isValidString(data.baseFolder, 0, 200)
+        && isValidString(data.baseFolder, 0, 128)
         && isValidString(data.connectedUser, 0, 150)
         && isValidString(data.updatedAt, 1, 64);
     }
 
-    function isValidSeedState(data) {
-      return data.keys().hasAll(['seeded', 'version', 'seededAt'])
-        && data.keys().hasOnly(['seeded', 'version', 'seededAt'])
-        && data.seeded == true
-        && data.version is number && data.version >= 1
-        && isValidString(data.seededAt, 1, 64);
-    }
-
-    // ==================== COLLECTION RULES ====================
-
-    // Connection check document
-    match /test/connection {
-      allow get: if true;
-      allow list, write: if false;
-    }
-
-    // Staff Users & RBAC Roles (keyed by employee username)
     match /staff_users/{username} {
-      allow get: if isValidId(username);
-      allow list: if request.query.limit <= 500;
-      allow create: if isValidId(username)
-        && isValidStaffUser(incoming())
-        && incoming().username == username;
-      allow update: if isValidId(username)
-        && isValidStaffUser(incoming())
-        && incoming().id == existing().id
-        && incoming().username == existing().username
-        && (username != '100889' || incoming().role == 'admin')
-        && (
-          incoming().diff(existing()).affectedKeys().hasOnly(['passwordHash', 'updatedAt']) ||
-          incoming().diff(existing()).affectedKeys().hasOnly(['role', 'updatedAt']) ||
-          incoming().diff(existing()).affectedKeys().hasOnly(['name', 'role', 'passwordHash', 'updatedAt'])
-        );
-      allow delete: if isValidId(username) && username != '100889';
+      allow get, list: if isStaff() && request.query.limit <= 500;
+      allow create: if isAdmin()
+        && isValidId(username)
+        && isValidStaffUser(request.resource.data)
+        && request.resource.data.username == username;
+      allow update: if isAdmin()
+        && isValidId(username)
+        && isValidStaffUser(request.resource.data)
+        && request.resource.data.id == resource.data.id
+        && request.resource.data.username == resource.data.username
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'role', 'updatedAt'])
+        && (username != '100889' || request.resource.data.role == 'admin');
+      allow delete: if isAdmin() && isValidId(username) && username != '100889';
     }
 
-    // Contractors Directory
     match /contractors/{contractorId} {
-      allow get: if isValidId(contractorId);
-      allow list: if request.query.limit <= 500;
-      allow create: if isValidId(contractorId)
-        && isValidContractor(incoming())
-        && incoming().id == contractorId;
-      allow update: if isValidId(contractorId)
-        && isValidContractor(incoming())
-        && incoming().id == existing().id
-        && (
-          incoming().diff(existing()).affectedKeys().hasOnly(['pin', 'updatedAt']) ||
-          incoming().diff(existing()).affectedKeys().hasOnly(['active', 'updatedAt']) ||
-          incoming().diff(existing()).affectedKeys().hasOnly(['name', 'pin', 'active', 'updatedAt'])
-        );
-      allow delete: if isValidId(contractorId);
+      allow get, list: if isStaff() && request.query.limit <= 500;
+      allow create: if isAdmin()
+        && isValidId(contractorId)
+        && isValidContractor(request.resource.data)
+        && request.resource.data.id == contractorId;
+      allow update: if isAdmin()
+        && isValidId(contractorId)
+        && isValidContractor(request.resource.data)
+        && request.resource.data.id == resource.data.id
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'active', 'updatedAt']);
+      allow delete: if isAdmin() && isValidId(contractorId);
     }
 
-    // Maintenance & Emergency Invoices
     match /invoices/{invoiceId} {
-      allow get: if isValidId(invoiceId);
-      allow list: if request.query.limit <= 5000;
+      allow get: if isValidId(invoiceId)
+        && ((isStaff()) || (isContractor() && resource.data.contractor == request.auth.token.name));
+      allow list: if request.query.limit <= 5000
+        && (isStaff() || (isContractor() && resource.data.contractor == request.auth.token.name));
       allow create: if isValidId(invoiceId)
-        && isValidInvoice(incoming())
-        && incoming().id == invoiceId;
+        && isValidInvoice(request.resource.data)
+        && request.resource.data.id == invoiceId
+        && (canEditInvoices() || (isContractor()
+          && request.resource.data.contractor == request.auth.token.name
+          && request.resource.data.status == 'قيد المراجعة'));
       allow update: if isValidId(invoiceId)
-        && isValidInvoice(incoming())
-        && incoming().id == existing().id
-        && (
-          incoming().diff(existing()).affectedKeys().hasOnly(['status', 'note', 'updatedAt']) ||
-          incoming().diff(existing()).affectedKeys().hasOnly(['status', 'quality', 'note', 'updatedAt']) ||
-          incoming().diff(existing()).affectedKeys().hasOnly(['photos', 'updatedAt']) ||
-          incoming().diff(existing()).affectedKeys().hasOnly([
-            'wo', 'contractor', 'consultant', 'invoiceDate', 'workType', 'workDesc',
-            'equipType', 'funcLoc', 'office', 'deliveryDate', 'note', 'status',
-            'quality', 'checklist', 'photos', 'updatedAt'
-          ])
-        );
-      allow delete: if isValidId(invoiceId);
+        && isValidInvoice(request.resource.data)
+        && request.resource.data.id == resource.data.id
+        && request.resource.data.seq == resource.data.seq
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'wo', 'contractor', 'consultant', 'invoiceDate', 'workType', 'workDesc',
+          'equipType', 'funcLoc', 'office', 'deliveryDate', 'note', 'status',
+          'quality', 'checklist', 'photos', 'updatedAt'
+        ])
+        && (canEditInvoices() || (isContractor()
+          && resource.data.contractor == request.auth.token.name
+          && request.resource.data.contractor == request.auth.token.name
+          && request.resource.data.status == 'قيد المراجعة'));
+      allow delete: if isAdmin() && isValidId(invoiceId);
     }
 
-    // Immutable Audit Logs (append-only)
     match /audit_logs/{logId} {
-      allow get: if isValidId(logId);
-      allow list: if request.query.limit <= 200;
-      allow create: if isValidId(logId)
-        && isValidAuditLog(incoming())
-        && incoming().id == logId;
+      allow get, list: if isStaff() && request.query.limit <= 200;
+      allow create: if isStaff()
+        && isValidId(logId)
+        && isValidAuditLog(request.resource.data)
+        && request.resource.data.id == logId;
       allow update, delete: if false;
     }
 
-    // Shared App Settings (OneDrive non-secret metadata only)
     match /app_settings/{settingId} {
-      allow get: if settingId == 'onedrive';
-      allow list: if false;
-      allow create: if settingId == 'onedrive' && isValidOneDriveSettings(incoming());
-      allow update: if settingId == 'onedrive'
-        && isValidOneDriveSettings(incoming())
-        && incoming().diff(existing()).affectedKeys().hasOnly(['clientId', 'tenantId', 'baseFolder', 'connectedUser', 'updatedAt']);
-      allow delete: if false;
+      allow get: if isAdmin() && settingId == 'onedrive';
+      allow create: if isAdmin()
+        && settingId == 'onedrive'
+        && isValidOneDriveSettings(request.resource.data);
+      allow update: if isAdmin()
+        && settingId == 'onedrive'
+        && isValidOneDriveSettings(request.resource.data)
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'clientId', 'tenantId', 'baseFolder', 'connectedUser', 'updatedAt'
+        ]);
+      allow list, delete: if false;
     }
 
-    // System Initialization Seed Marker
+    match /auth_credentials/{credentialId} {
+      allow read, write: if false;
+    }
+
+    match /auth_login_limits/{limitId} {
+      allow read, write: if false;
+    }
+
     match /system_meta/{metaId} {
-      allow get: if metaId == 'seed_state';
-      allow list: if false;
-      allow create: if metaId == 'seed_state' && isValidSeedState(incoming());
-      allow update, delete: if false;
+      allow read, write: if false;
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
     }
   }
 }

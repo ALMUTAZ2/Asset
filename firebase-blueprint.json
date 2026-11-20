@@ -2,7 +2,7 @@
   "entities": {
     "StaffUser": {
       "title": "StaffUser",
-      "description": "Company department employee account with role-based permissions and SHA-256 hashed password.",
+      "description": "Company department employee profile with role-based permissions. Credentials are stored separately in the server-only auth_credentials collection.",
       "type": "object",
       "properties": {
         "id": {
@@ -21,11 +21,6 @@
           "maxLength": 64,
           "pattern": "^[a-zA-Z0-9_\\-]+$"
         },
-        "passwordHash": {
-          "type": "string",
-          "minLength": 16,
-          "maxLength": 128
-        },
         "role": {
           "type": "string",
           "enum": ["admin", "reviewer", "viewer"]
@@ -35,11 +30,11 @@
           "maxLength": 64
         }
       },
-      "required": ["id", "name", "username", "passwordHash", "role", "updatedAt"]
+      "required": ["id", "name", "username", "role", "updatedAt"]
     },
     "Contractor": {
       "title": "Contractor",
-      "description": "Contractor organization account with portal PIN and active status.",
+      "description": "Contractor organization profile with active status. PIN credentials are stored separately in the server-only auth_credentials collection.",
       "type": "object",
       "properties": {
         "id": {
@@ -52,11 +47,6 @@
           "minLength": 1,
           "maxLength": 150
         },
-        "pin": {
-          "type": "string",
-          "minLength": 1,
-          "maxLength": 32
-        },
         "active": {
           "type": "boolean"
         },
@@ -65,7 +55,7 @@
           "maxLength": 64
         }
       },
-      "required": ["id", "name", "pin", "active", "updatedAt"]
+      "required": ["id", "name", "active", "updatedAt"]
     },
     "Invoice": {
       "title": "Invoice",

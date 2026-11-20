@@ -3,17 +3,17 @@ import {
   deleteDoc,
   doc,
   getDoc,
-  getDocs,
   limit,
   onSnapshot,
   orderBy,
   query,
+  where,
   setDoc,
   updateDoc,
   writeBatch,
   type Unsubscribe,
 } from 'firebase/firestore';
-import { db, handleFirestoreError, OperationType } from './firebase';
+import { auth, db, handleFirestoreError, OperationType } from './firebase';
 
 export type StaffRole = 'admin' | 'reviewer' | 'viewer';
 
@@ -21,7 +21,6 @@ export interface StaffUser {
   id: string;
   name: string;
   username: string;
-  passwordHash: string;
   role: StaffRole;
   updatedAt: string;
 }
@@ -29,7 +28,6 @@ export interface StaffUser {
 export interface ContractorRecord {
   id: string;
   name: string;
-  pin: string;
   active: boolean;
   updatedAt: string;
 }
@@ -95,38 +93,6 @@ export interface DropboxCloudSettings {
 // Alias للتوافق مع الكود القديم
 export type OneDriveCloudSettings = DropboxCloudSettings;
 
-// ==================== PASSWORD HASHING (SHA-256) ====================
-export async function hashPassword(plain: string): Promise<string> {
-  const input = `sec_assets_v1:${plain}`;
-  if (typeof crypto !== 'undefined' && crypto.subtle) {
-    const encoded = new TextEncoder().encode(input);
-    const buf = await crypto.subtle.digest('SHA-256', encoded);
-    return Array.from(new Uint8Array(buf))
-      .map((b) => b.toString(16).padStart(2, '0'))
-      .join('');
-  }
-  // Deterministic hex fallback if SubtleCrypto unavailable in non-secure context
-  let h1 = 0xdeadbeef;
-  let h2 = 0x41c6ce57;
-  for (let i = 0; i < input.length; i++) {
-    const ch = input.charCodeAt(i);
-    h1 = Math.imul(h1 ^ ch, 2654435761);
-    h2 = Math.imul(h2 ^ ch, 1597334677);
-  }
-  h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^ Math.imul(h2 ^ (h2 >>> 13), 3266489909);
-  h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909);
-  return (
-    (h2 >>> 0).toString(16).padStart(8, '0') +
-    (h1 >>> 0).toString(16).padStart(8, '0') +
-    '0000000000000000'
-  );
-}
-
-export async function verifyPassword(plain: string, storedHash: string): Promise<boolean> {
-  const hashed = await hashPassword(plain);
-  return hashed === storedHash;
-}
-
 // ==================== DEFENSIVE SANITIZATION ====================
 const SAFE_ID_REGEX = /[^a-zA-Z0-9_\-]/g;
 
@@ -148,7 +114,6 @@ export function sanitizeStaffPayload(u: StaffUser): StaffUser {
     id: sanitizeId(u.id || `st_${username}`, 'st'),
     name: trunc(u.name || username, 120),
     username,
-    passwordHash: trunc(u.passwordHash, 128),
     role: VALID_ROLES.includes(u.role) ? u.role : 'reviewer',
     updatedAt: trunc(u.updatedAt || new Date().toISOString(), 64),
   };
@@ -159,7 +124,6 @@ export function sanitizeContractorPayload(c: ContractorRecord): ContractorRecord
   return {
     id,
     name: trunc(c.name || 'مقاول', 150),
-    pin: trunc(c.pin || '1234', 32),
     active: Boolean(c.active),
     updatedAt: trunc(c.updatedAt || new Date().toISOString(), 64),
   };
@@ -258,104 +222,6 @@ export function parseDropboxFromFirestore(data: any): DropboxCloudSettings {
   };
 }
 
-// ==================== BATCHED SEEDING (IDEMPOTENT) ====================
-export interface SeedBundle {
-  staffUsers: StaffUser[];
-  contractors: ContractorRecord[];
-  invoices: InvoiceRecord[];
-  initialAudit: AuditLogRecord;
-  oneDrive: OneDriveCloudSettings;
-}
-
-export async function ensureFirestoreSeeded(
-  buildBundle: () => Promise<SeedBundle>,
-  onProgress?: (msg: string) => void
-): Promise<boolean> {
-  const seedRef = doc(db, 'system_meta', 'seed_state');
-  let alreadySeeded = false;
-  try {
-    const snap = await getDoc(seedRef);
-    if (snap.exists() && snap.data()?.seeded === true) {
-      alreadySeeded = true;
-    }
-  } catch (error) {
-    handleFirestoreError(error, OperationType.GET, 'system_meta/seed_state');
-  }
-
-  if (alreadySeeded) return false;
-
-  // Double-check if staff_users already exist (e.g. concurrent tab started seeding)
-  try {
-    const existingStaff = await getDocs(query(collection(db, 'staff_users'), limit(1)));
-    if (!existingStaff.empty) {
-      try {
-        await setDoc(seedRef, {
-          seeded: true,
-          version: 1,
-          seededAt: new Date().toISOString(),
-        });
-      } catch {
-        // Ignore if another tab created seed_state first
-      }
-      return false;
-    }
-  } catch (error) {
-    handleFirestoreError(error, OperationType.LIST, 'staff_users');
-  }
-
-  onProgress?.('جاري ترحيل قاعدة بيانات المستخدمين والصلاحيات والفواتير إلى Firestore...');
-  const bundle = await buildBundle();
-
-  // Collect all write operations and commit in chunks of 350 (well below Firestore's 500-op batch cap)
-  type PendingOp = { path: string; id: string; data: Record<string, unknown> };
-  const ops: PendingOp[] = [];
-
-  for (const u of bundle.staffUsers) {
-    const clean = sanitizeStaffPayload(u);
-    ops.push({ path: 'staff_users', id: clean.username, data: clean as unknown as Record<string, unknown> });
-  }
-  for (const c of bundle.contractors) {
-    const clean = sanitizeContractorPayload(c);
-    ops.push({ path: 'contractors', id: clean.id, data: clean as unknown as Record<string, unknown> });
-  }
-  for (const inv of bundle.invoices) {
-    const clean = sanitizeInvoicePayload(inv);
-    ops.push({ path: 'invoices', id: clean.id, data: clean as unknown as Record<string, unknown> });
-  }
-  const cleanLog = sanitizeAuditPayload(bundle.initialAudit);
-  ops.push({ path: 'audit_logs', id: cleanLog.id, data: cleanLog as unknown as Record<string, unknown> });
-
-  const cleanOd = sanitizeOneDriveSettings(bundle.oneDrive);
-  ops.push({ path: 'app_settings', id: 'onedrive', data: cleanOd as unknown as Record<string, unknown> });
-
-  const CHUNK_SIZE = 350;
-  for (let i = 0; i < ops.length; i += CHUNK_SIZE) {
-    const chunk = ops.slice(i, i + CHUNK_SIZE);
-    const batch = writeBatch(db);
-    for (const op of chunk) {
-      batch.set(doc(db, op.path, op.id), op.data);
-    }
-    try {
-      await batch.commit();
-      const pct = Math.min(99, Math.round(((i + chunk.length) / ops.length) * 100));
-      onProgress?.(`جاري مزامنة البيانات الأولية مع Firestore (${pct}%)...`);
-    } catch (error) {
-      handleFirestoreError(error, OperationType.WRITE, `seed_batch_${i}`);
-    }
-  }
-
-  try {
-    await setDoc(seedRef, {
-      seeded: true,
-      version: 1,
-      seededAt: new Date().toISOString(),
-    });
-  } catch {
-    // Another concurrent client may have already created seed_state
-  }
-  return true;
-}
-
 // ==================== REAL-TIME LISTENERS ====================
 export interface SubscriptionCallbacks {
   onStaff: (staff: StaffUser[]) => void;
@@ -366,7 +232,14 @@ export interface SubscriptionCallbacks {
   onError: (error: Error) => void;
 }
 
-export function subscribeAllCollections(cbs: SubscriptionCallbacks): () => void {
+export interface SessionInfo {
+  type: 'staff' | 'contractor';
+  name: string;
+  username?: string;
+  role: string;
+}
+
+export function subscribeAllCollections(cbs: SubscriptionCallbacks, session: SessionInfo): () => void {
   const unsubs: Unsubscribe[] = [];
 
   const safeErr = (err: unknown, op: OperationType, path: string) => {
@@ -377,44 +250,55 @@ export function subscribeAllCollections(cbs: SubscriptionCallbacks): () => void 
     }
   };
 
-  unsubs.push(
-    onSnapshot(
-      query(collection(db, 'staff_users'), limit(500)),
-      (snap) => {
-        const list = snap.docs
-          .map((d) => d.data() as StaffUser)
-          .sort((a, b) => {
-            if (a.username === '100889') return -1;
-            if (b.username === '100889') return 1;
-            return (a.id || '').localeCompare(b.id || '', undefined, { numeric: true });
-          });
-        cbs.onStaff(list);
-      },
-      (err) => safeErr(err, OperationType.LIST, 'staff_users')
-    )
-  );
+  if (session.type === 'staff') {
+    unsubs.push(
+      onSnapshot(
+        query(collection(db, 'staff_users'), limit(500)),
+        (snap) => {
+          const list = snap.docs
+            .map((d) => d.data() as StaffUser)
+            .sort((a, b) => {
+              if (a.username === '100889') return -1;
+              if (b.username === '100889') return 1;
+              return (a.id || '').localeCompare(b.id || '', undefined, { numeric: true });
+            });
+          cbs.onStaff(list);
+        },
+        (err) => safeErr(err, OperationType.LIST, 'staff_users')
+      ),
+      onSnapshot(
+        query(collection(db, 'contractors'), limit(500)),
+        (snap) => {
+          const list = snap.docs
+            .map((d) => d.data() as ContractorRecord)
+            .sort((a, b) => (a.id || '').localeCompare(b.id || '', undefined, { numeric: true }));
+          cbs.onContractors(list);
+        },
+        (err) => safeErr(err, OperationType.LIST, 'contractors')
+      ),
+      onSnapshot(
+        query(collection(db, 'audit_logs'), orderBy('createdAtMs', 'desc'), limit(60)),
+        (snap) => cbs.onAuditLogs(snap.docs.map((d) => d.data() as AuditLogRecord)),
+        (err) => safeErr(err, OperationType.LIST, 'audit_logs')
+      )
+    );
+  } else {
+    cbs.onStaff([]);
+    cbs.onContractors([]);
+    cbs.onAuditLogs([]);
+  }
+
+  const invoiceQuery = session.type === 'contractor'
+    ? query(collection(db, 'invoices'), where('contractor', '==', session.name), limit(5000))
+    : query(collection(db, 'invoices'), limit(5000));
 
   unsubs.push(
     onSnapshot(
-      query(collection(db, 'contractors'), limit(500)),
-      (snap) => {
-        const list = snap.docs
-          .map((d) => d.data() as ContractorRecord)
-          .sort((a, b) => (a.id || '').localeCompare(b.id || '', undefined, { numeric: true }));
-        cbs.onContractors(list);
-      },
-      (err) => safeErr(err, OperationType.LIST, 'contractors')
-    )
-  );
-
-  unsubs.push(
-    onSnapshot(
-      query(collection(db, 'invoices'), limit(5000)),
+      invoiceQuery,
       (snap) => {
         const list = snap.docs
           .map((d) => d.data() as InvoiceRecord)
           .sort((a, b) => {
-            // Newest updated/created items on top for recently added ones, else preserve seq
             if ((a.id || '').startsWith('inv_1') && (b.id || '').startsWith('inv_1')) {
               return (a.id || '').localeCompare(b.id || '', undefined, { numeric: true });
             }
@@ -426,102 +310,62 @@ export function subscribeAllCollections(cbs: SubscriptionCallbacks): () => void 
     )
   );
 
-  unsubs.push(
-    onSnapshot(
-      query(collection(db, 'audit_logs'), orderBy('createdAtMs', 'desc'), limit(60)),
-      (snap) => {
-        const list = snap.docs.map((d) => d.data() as AuditLogRecord);
-        cbs.onAuditLogs(list);
-      },
-      (err) => safeErr(err, OperationType.LIST, 'audit_logs')
-    )
-  );
+  if (session.type === 'staff' && session.role === 'admin') {
+    unsubs.push(
+      onSnapshot(
+        doc(db, 'app_settings', 'onedrive'),
+        (snap) => {
+          if (snap.exists()) cbs.onOneDrive(parseDropboxFromFirestore(snap.data()));
+        },
+        (err) => safeErr(err, OperationType.GET, 'app_settings/onedrive')
+      )
+    );
+  }
 
-  unsubs.push(
-    onSnapshot(
-      doc(db, 'app_settings', 'onedrive'),
-      (snap) => {
-        if (snap.exists()) {
-          cbs.onOneDrive(parseDropboxFromFirestore(snap.data()));
-        }
-      },
-      (err) => safeErr(err, OperationType.GET, 'app_settings/onedrive')
-    )
-  );
-
-  return () => {
-    unsubs.forEach((u) => u());
-  };
+  return () => unsubs.forEach((unsubscribe) => unsubscribe());
 }
 
 // ==================== CRUD OPERATIONS ====================
-export async function fsCreateStaffUser(user: StaffUser): Promise<void> {
-  const clean = sanitizeStaffPayload(user);
-  const path = `staff_users/${clean.username}`;
-  try {
-    await setDoc(doc(db, 'staff_users', clean.username), clean);
-  } catch (error) {
-    handleFirestoreError(error, OperationType.CREATE, path);
-  }
+async function postSecureApi(path: string, payload: Record<string, unknown>): Promise<void> {
+  const user = auth.currentUser;
+  if (!user) throw new Error('Authentication required.');
+  const token = await user.getIdToken();
+  const response = await fetch(path, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(payload),
+  });
+  const result = (await response.json().catch(() => ({}))) as { error?: string };
+  if (!response.ok) throw new Error(result.error || 'تعذر تنفيذ العملية.');
 }
 
-export async function fsUpdateStaffPassword(username: string, passwordHash: string): Promise<void> {
-  const safeUser = sanitizeId(username);
-  const path = `staff_users/${safeUser}`;
-  try {
-    await updateDoc(doc(db, 'staff_users', safeUser), {
-      passwordHash: trunc(passwordHash, 128),
-      updatedAt: new Date().toISOString(),
-    });
-  } catch (error) {
-    handleFirestoreError(error, OperationType.UPDATE, path);
-  }
+export async function fsCreateStaffUser(user: StaffUser, password: string): Promise<void> {
+  const clean = sanitizeStaffPayload(user);
+  await postSecureApi('/api/admin/records', { action: 'create-staff', ...clean, password });
+}
+
+export async function fsChangeOwnPassword(currentPassword: string, newPassword: string): Promise<void> {
+  await postSecureApi('/api/auth/password', { currentPassword, newPassword });
 }
 
 export async function fsUpdateStaffRole(username: string, role: StaffRole): Promise<void> {
-  const safeUser = sanitizeId(username);
-  const path = `staff_users/${safeUser}`;
-  try {
-    await updateDoc(doc(db, 'staff_users', safeUser), {
-      role,
-      updatedAt: new Date().toISOString(),
-    });
-  } catch (error) {
-    handleFirestoreError(error, OperationType.UPDATE, path);
-  }
+  await postSecureApi('/api/admin/records', { action: 'update-staff-role', username: sanitizeId(username), role });
 }
 
 export async function fsDeleteStaffUser(username: string): Promise<void> {
-  const safeUser = sanitizeId(username);
-  const path = `staff_users/${safeUser}`;
-  try {
-    await deleteDoc(doc(db, 'staff_users', safeUser));
-  } catch (error) {
-    handleFirestoreError(error, OperationType.DELETE, path);
-  }
+  await postSecureApi('/api/admin/records', { action: 'delete-staff', username: sanitizeId(username) });
 }
 
-export async function fsCreateContractor(c: ContractorRecord): Promise<void> {
+export async function fsCreateContractor(c: ContractorRecord, pin: string): Promise<void> {
   const clean = sanitizeContractorPayload(c);
-  const path = `contractors/${clean.id}`;
-  try {
-    await setDoc(doc(db, 'contractors', clean.id), clean);
-  } catch (error) {
-    handleFirestoreError(error, OperationType.CREATE, path);
-  }
+  await postSecureApi('/api/admin/records', { action: 'create-contractor', ...clean, pin });
 }
 
 export async function fsUpdateContractorPin(id: string, pin: string): Promise<void> {
-  const safeId = sanitizeId(id);
-  const path = `contractors/${safeId}`;
-  try {
-    await updateDoc(doc(db, 'contractors', safeId), {
-      pin: trunc(pin, 32),
-      updatedAt: new Date().toISOString(),
-    });
-  } catch (error) {
-    handleFirestoreError(error, OperationType.UPDATE, path);
-  }
+  await postSecureApi('/api/admin/records', { action: 'update-contractor-pin', id: sanitizeId(id), pin });
 }
 
 export async function fsToggleContractorActive(id: string, active: boolean): Promise<void> {

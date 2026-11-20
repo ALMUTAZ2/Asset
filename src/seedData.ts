@@ -1,10 +1,4 @@
-import {
-  type ContractorRecord,
-  type InvoiceRecord,
-  type SeedBundle,
-  type StaffRole,
-  hashPassword,
-} from './firestoreStore';
+import type { InvoiceRecord } from './firestoreStore';
 
 export const DEFAULT_CONTRACTOR_NAMES = [
   'الشركة العالمية', 'مؤسسة كنان العربية', 'شركة ديار الوطن', 'شركة رابكوا', 'شركة هيف',
@@ -14,30 +8,6 @@ export const DEFAULT_CONTRACTOR_NAMES = [
   'شركة بكري الصعب', 'شركة دسر العربية', 'شركة ناصر الوبران', 'مؤسسة اعمار الجنوب', 'مؤسسة المدخلي',
   'مؤسسة المنجوف', 'مؤسسة سليمان القسومي', 'مؤسسة أصالة الجزيرة', 'شركة العرض الانشائي', 'شركة الحمزي',
   'مؤسسة ساند للاعمال',
-];
-
-export const DEFAULT_STAFF_SEED: Array<{
-  id: string;
-  name: string;
-  username: string;
-  password: string;
-  role: StaffRole;
-}> = [
-  { id: 'st_1', name: 'المعتز محمد ابوطالب', username: '100889', password: '1234', role: 'admin' },
-  { id: 'st_2', name: 'عماد احمد عقيلي', username: '78620', password: '1234', role: 'reviewer' },
-  { id: 'st_3', name: 'يوسف ال جحيف', username: '66288', password: '1234', role: 'reviewer' },
-  { id: 'st_4', name: 'عبدالعزيز حكمي', username: '114073', password: '1234', role: 'reviewer' },
-  { id: 'st_5', name: 'عبدالعزيز النعمي', username: '114084', password: '1234', role: 'reviewer' },
-  { id: 'st_6', name: 'إبراهيم حوذان', username: '110161', password: '1234', role: 'reviewer' },
-  { id: 'st_7', name: 'عبدالرحمن حمود آل عقيل', username: '1077825980', password: '1234', role: 'reviewer' },
-  { id: 'st_8', name: 'ريان احمد نمري', username: '1102794680', password: '1234', role: 'reviewer' },
-  { id: 'st_9', name: 'أحمد ماجد صائغ', username: '1093540407', password: '1234', role: 'reviewer' },
-  { id: 'st_10', name: 'خالد علي الحازمي', username: '1087282826', password: '1234', role: 'reviewer' },
-  { id: 'st_11', name: 'إبراهيم علي حكمي', username: '1101833679', password: '1234', role: 'reviewer' },
-  { id: 'st_12', name: 'خالد مجلي كريري', username: '1109735108', password: '1234', role: 'reviewer' },
-  { id: 'st_13', name: 'علي احمد الغريب', username: '1107106401', password: '1234', role: 'reviewer' },
-  { id: 'st_14', name: 'محمد احمد مسلماني', username: '1091959393', password: '1234', role: 'reviewer' },
-  { id: 'st_15', name: 'عبدالعزيز هاشم صيقل', username: '1079857098', password: '1234', role: 'reviewer' },
 ];
 
 export const CONSULTANTS = ['علوم العمران', 'سعود كونسلت', 'محرم باخوم', 'حسن فقية'];
@@ -261,57 +231,3 @@ export function buildSeedInvoices(): InvoiceRecord[] {
   }));
 }
 
-export async function buildInitialSeedBundle(): Promise<SeedBundle> {
-  const nowIso = new Date().toISOString();
-  const defaultPassHash = await hashPassword('1234');
-
-  const staffUsers = DEFAULT_STAFF_SEED.map((s) => ({
-    id: s.id,
-    name: s.name,
-    username: s.username,
-    passwordHash: defaultPassHash,
-    role: s.role,
-    updatedAt: nowIso,
-  }));
-
-  const contractors: ContractorRecord[] = DEFAULT_CONTRACTOR_NAMES.map((name, idx) => ({
-    id: `ctr_${idx + 1}`,
-    name,
-    pin: String(1001 + idx),
-    active: true,
-    updatedAt: nowIso,
-  }));
-
-  const invoices = buildSeedInvoices();
-
-  return {
-    staffUsers,
-    contractors,
-    invoices,
-    initialAudit: {
-      id: 'log_init_1',
-      time: new Date().toLocaleString('ar-SA', {
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit',
-        hour: '2-digit',
-        minute: '2-digit',
-      }),
-      user: 'النظام',
-      action: 'تهيئة المنصة على Firestore',
-      details: 'تم ترحيل 15 موظفاً بصلاحياتهم و31 مقاولاً و571 فاتورة إلى قاعدة بيانات Firestore بنجاح',
-      createdAtMs: Date.now(),
-    },
-    oneDrive: {
-      clientId: '',
-      appSecret: '',
-      refreshToken: '',
-      accessToken: '',
-      tokenExpiresAt: 0,
-      tenantId: 'dropbox',
-      baseFolder: '/Apps/Invoice Tracker – Asset Receiving',
-      connectedUser: '',
-      updatedAt: nowIso,
-    },
-  };
-}

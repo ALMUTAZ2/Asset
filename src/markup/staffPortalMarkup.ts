@@ -55,7 +55,7 @@ export const STAFF_VIEW_MARKUP = `
             </div>
           </div>
           <div class="space-y-1.5">
-            <button onclick="openResetPasswordModal(true)" class="w-full py-2 px-3 rounded-xl bg-white/5 hover:bg-se-mid-blue text-xs font-bold text-slate-200 hover:text-white flex items-center justify-center gap-2 transition border border-white/10">
+            <button onclick="openResetPasswordModal()" class="w-full py-2 px-3 rounded-xl bg-white/5 hover:bg-se-mid-blue text-xs font-bold text-slate-200 hover:text-white flex items-center justify-center gap-2 transition border border-white/10">
               <i data-lucide="key-round" class="w-3.5 h-3.5"></i>
               <span>إعادة تعيين كلمة المرور</span>
             </button>
@@ -74,13 +74,13 @@ export const STAFF_VIEW_MARKUP = `
       <div class="flex-1 flex flex-col min-w-0">
         <!-- Top Bar -->
         <header class="bg-white se-header-bar border-b border-slate-200 sticky top-0 z-30 px-4 sm:px-6 py-3.5 flex items-center justify-between gap-3">
-          <div class="flex items-center gap-3">
-            <button onclick="toggleMobileSidebar(true)" class="lg:hidden p-2 rounded-xl bg-slate-100 text-se-dark-blue">
+          <div class="flex min-w-0 items-center gap-3">
+            <button onclick="toggleMobileSidebar(true)" class="lg:hidden p-2 rounded-xl bg-slate-100 text-se-dark-blue" aria-label="فتح القائمة">
               <i data-lucide="menu" class="w-5 h-5"></i>
             </button>
-            <div>
-              <h2 id="staffSectionTitle" class="text-lg font-extrabold text-se-dark-blue">لوحة التحكم التنفيذية</h2>
-              <p id="staffTopWelcome" class="text-xs font-bold text-se-mid-blue">مرحباً بك في منصة متابعة فواتير الصيانة والطوارئ</p>
+            <div class="min-w-0">
+              <h2 id="staffSectionTitle" class="max-w-[68vw] truncate text-sm font-extrabold leading-snug text-se-dark-blue sm:max-w-none sm:text-lg">لوحة التحكم التنفيذية</h2>
+              <p id="staffTopWelcome" class="max-w-[68vw] truncate text-[11px] font-bold text-se-mid-blue sm:max-w-none sm:text-xs">مرحباً بك في منصة متابعة فواتير الصيانة والطوارئ</p>
             </div>
           </div>
 
@@ -446,7 +446,7 @@ export const STAFF_VIEW_MARKUP = `
                 <form onsubmit="addStaffUser(event)" class="p-4 bg-slate-50 border-b border-slate-200 grid grid-cols-2 gap-2.5">
                   <input type="text" id="newStaffName" required placeholder="الاسم الكامل" class="rounded-lg border border-slate-300 bg-white py-2 px-2.5 text-xs font-semibold outline-none" />
                   <input type="text" id="newStaffUser" required placeholder="اسم المستخدم (إنجليزي)" class="rounded-lg border border-slate-300 bg-white py-2 px-2.5 text-xs font-mono outline-none" dir="ltr" />
-                  <input type="text" id="newStaffPass" required placeholder="كلمة المرور" class="rounded-lg border border-slate-300 bg-white py-2 px-2.5 text-xs font-mono outline-none" dir="ltr" />
+                  <input type="password" id="newStaffPass" required minlength="10" autocomplete="new-password" placeholder="كلمة المرور (10 خانات على الأقل)" class="rounded-lg border border-slate-300 bg-white py-2 px-2.5 text-xs font-mono outline-none" dir="ltr" />
                   <select id="newStaffRole" class="rounded-lg border border-slate-300 bg-white py-2 px-2.5 text-xs font-bold outline-none">
                     <option value="admin">مدير النظام (كامل)</option>
                     <option value="reviewer">مهندس مراجع (اعتماد)</option>

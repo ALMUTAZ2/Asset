@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { PLATFORM_MARKUP } from './platformMarkup';
 import { initPlatformEngine } from './platformEngine';
+import { initPremiumUX } from './premium/enhance';
 
 function PlatformShell() {
   const [fatalError, setFatalError] = useState<Error | null>(null);
@@ -10,7 +11,11 @@ function PlatformShell() {
     const cleanup = initPlatformEngine((err) => {
       setFatalError(err);
     });
-    return cleanup;
+    const cleanupUX = initPremiumUX();
+    return () => {
+      cleanupUX();
+      if (typeof cleanup === 'function') cleanup();
+    };
   }, []);
 
   if (fatalError) {
