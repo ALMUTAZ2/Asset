@@ -446,7 +446,7 @@ export const STAFF_VIEW_MARKUP = `
                 <form onsubmit="addStaffUser(event)" class="p-4 bg-slate-50 border-b border-slate-200 grid grid-cols-2 gap-2.5">
                   <input type="text" id="newStaffName" required placeholder="الاسم الكامل" class="rounded-lg border border-slate-300 bg-white py-2 px-2.5 text-xs font-semibold outline-none" />
                   <input type="text" id="newStaffUser" required placeholder="اسم المستخدم (إنجليزي)" class="rounded-lg border border-slate-300 bg-white py-2 px-2.5 text-xs font-mono outline-none" dir="ltr" />
-                  <input type="password" id="newStaffPass" required minlength="10" autocomplete="new-password" placeholder="كلمة المرور (10 خانات على الأقل)" class="rounded-lg border border-slate-300 bg-white py-2 px-2.5 text-xs font-mono outline-none" dir="ltr" />
+                  <input type="password" id="newStaffPass" required minlength="4" autocomplete="new-password" placeholder="كلمة المرور (4 خانات على الأقل)" class="rounded-lg border border-slate-300 bg-white py-2 px-2.5 text-xs font-mono outline-none" dir="ltr" />
                   <select id="newStaffRole" class="rounded-lg border border-slate-300 bg-white py-2 px-2.5 text-xs font-bold outline-none">
                     <option value="admin">مدير النظام (كامل)</option>
                     <option value="reviewer">مهندس مراجع (اعتماد)</option>

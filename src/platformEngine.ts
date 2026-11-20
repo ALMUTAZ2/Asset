@@ -501,8 +501,8 @@ export function initPlatformEngine(onFatalError?: (err: Error) => void): () => v
       showErr('سجّل الدخول إلى حساب الموظف لتغيير كلمة المرور.');
       return;
     }
-    if (newPass.length < 10) {
-      showErr('يجب أن تتكون كلمة المرور الجديدة من 10 خانات على الأقل.');
+    if (newPass.length < 4) {
+      showErr('يجب أن تتكون كلمة المرور الجديدة من 4 خانات على الأقل.');
       return;
     }
     if (newPass !== confirmPass) {
@@ -1839,8 +1839,8 @@ export function initPlatformEngine(onFatalError?: (err: Error) => void): () => v
     const role = ($<HTMLSelectElement>('newStaffRole')?.value || 'reviewer') as StaffRole;
 
     if (!name || !username || !password) return;
-    if (password.length < 10) {
-      showToast('كلمة المرور يجب أن تتكون من 10 خانات على الأقل.', 'warning');
+    if (password.length < 4) {
+      showToast('كلمة المرور يجب أن تتكون من 4 خانات على الأقل.', 'warning');
       return;
     }
     if (appState.staffUsers.some((u) => u.username.toLowerCase() === username.toLowerCase())) {

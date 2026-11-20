@@ -48,8 +48,8 @@ export default async function handler(req: Request, res: Response): Promise<void
       const name = String(body.name || '').trim();
       const password = String(body.password || '');
       const role = body.role;
-      if (!validId.test(username) || !name || name.length > 120 || password.length < 10 || password.length > 128 || !validRoles.includes(role as (typeof validRoles)[number])) {
-        res.status(400).json({ error: 'تحقق من بيانات الموظف. كلمة المرور تتطلب 10 خانات على الأقل.' });
+      if (!validId.test(username) || !name || name.length > 120 || password.length < 4 || password.length > 128 || !validRoles.includes(role as (typeof validRoles)[number])) {
+        res.status(400).json({ error: 'تحقق من بيانات الموظف. كلمة المرور تتطلب 4 خانات على الأقل.' });
         return;
       }
       const profileRef = adminDb.collection('staff_users').doc(username);
