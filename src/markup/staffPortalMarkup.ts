@@ -90,7 +90,7 @@ export const STAFF_VIEW_MARKUP = `
         <main class="p-4 sm:p-6 flex-1 space-y-6">
 
           <!-- ========== MODULE 1: EXECUTIVE DASHBOARD ========== -->
-          <div id="sec_dashboard" class="space-y-6 animate-fade-up">
+          <div id="sec_dashboard" class="space-y-6">
             <!-- Dashboard Filters & Filtered Export Bar -->
             <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 flex flex-col gap-3">
               <div class="flex flex-wrap items-center gap-3">

@@ -169,7 +169,7 @@ export const LOGIN_VIEW_MARKUP = `
               <div>
                 <label class="block text-sm font-bold text-se-dark-blue mb-1.5">الرقم السري للمقاول (PIN)</label>
                 <div class="relative">
-                  <input type="password" id="contractorPinInput" required minlength="1" maxlength="12" inputmode="numeric" pattern="[0-9]{1,12}" placeholder="أدخل PIN الخاص بالمقاول"
+                  <input type="password" id="contractorPinInput" required minlength="4" maxlength="12" inputmode="numeric" pattern="[0-9]{4,12}" placeholder="أدخل PIN الخاص بالمقاول (4 أرقام على الأقل)"
                     class="w-full rounded-xl border border-slate-300 bg-slate-50 focus:bg-white focus:border-se-mid-blue focus:ring-2 focus:ring-se-mid-blue/20 py-3 pr-10 pl-4 text-sm font-semibold outline-none transition" />
                   <i data-lucide="lock" class="w-4 h-4 text-slate-400 absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none"></i>
                 </div>

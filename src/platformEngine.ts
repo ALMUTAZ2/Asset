@@ -1206,7 +1206,11 @@ export function initPlatformEngine(onFatalError?: (err: Error) => void): () => v
     });
     toggleMobileSidebar(false);
 
-    if (sec === 'dashboard') dashCtrl.renderDashboard();
+    if (sec === 'dashboard') {
+      requestAnimationFrame(() => {
+        dashCtrl.renderDashboard();
+      });
+    }
     if (sec === 'invoices') {
       refreshDynamicMonthSelect();
       renderStaffInvoicesTable();
@@ -1758,13 +1762,18 @@ export function initPlatformEngine(onFatalError?: (err: Error) => void): () => v
       title: 'تعديل الرقم السري للمقاول',
       message: `أدخل الرقم السري (PIN) الجديد لحساب: ${c.name}`,
       withInput: true,
-      placeholder: 'أدخل PIN جديداً من 4-8 أرقام',
+      placeholder: 'أدخل PIN جديداً (4 أرقام على الأقل)',
       onConfirm: async (newPin) => {
         if (!newPin) return;
-        c.pin = newPin;
+        const cleanPin = newPin.trim();
+        if (!/^\d{4,12}$/.test(cleanPin)) {
+          showToast('الرقم السري يجب أن يتكون من 4 أرقام على الأقل', 'warning');
+          return;
+        }
+        c.pin = cleanPin;
         renderUsersManagement();
         try {
-          await fsUpdateContractorPin(c.id, newPin);
+          await fsUpdateContractorPin(c.id, cleanPin);
           logAudit('تعديل PIN مقاول', `تم تحديث الرقم السري للمقاول: ${c.name}`);
           showToast(`تم تحديث الرقم السري لـ ${c.name} بنجاح`, 'success');
         } catch {
@@ -1790,7 +1799,7 @@ export function initPlatformEngine(onFatalError?: (err: Error) => void): () => v
   function addNewContractorPrompt(): void {
     openConfirmModal({
       title: 'إضافة مقاول جديد للمنصة',
-      message: 'أدخل اسم الشركة أو المؤسسة. سيتم إنشاء PIN عشوائي قوي وعرضه مرة واحدة بعد الحفظ.',
+      message: 'أدخل اسم الشركة أو المؤسسة. سيتم إنشاء PIN مكون من 4 أرقام ويمكنك إظهاره أو تعديله في أي وقت.',
       withInput: true,
       placeholder: 'مثال: شركة النور للمقاولات الكهربائية',
       onConfirm: async (name) => {
@@ -1801,7 +1810,7 @@ export function initPlatformEngine(onFatalError?: (err: Error) => void): () => v
         }
         const pinBytes = new Uint32Array(1);
         crypto.getRandomValues(pinBytes);
-        const initialPin = String(pinBytes[0] % 100000000).padStart(8, '0');
+        const initialPin = String(1000 + (pinBytes[0] % 9000));
         const newCtr: ContractorRecord = {
           id: `ctr_${Date.now()}`,
           name,

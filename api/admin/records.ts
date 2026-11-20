@@ -72,8 +72,8 @@ export default async function handler(req: Request, res: Response): Promise<void
       const id = String(body.id || '').trim();
       const name = String(body.name || '').trim();
       const pin = String(body.pin || '');
-      if (!validId.test(id) || !name || name.length > 150 || !/^\d{8,12}$/.test(pin)) {
-        res.status(400).json({ error: 'تحقق من اسم المقاول والرقم السري الجديد.' });
+      if (!validId.test(id) || !name || name.length > 150 || !/^\d{4,12}$/.test(pin)) {
+        res.status(400).json({ error: 'تحقق من اسم المقاول والرقم السري (4 أرقام على الأقل).' });
         return;
       }
       const profileRef = adminDb.collection('contractors').doc(id);
@@ -99,8 +99,8 @@ export default async function handler(req: Request, res: Response): Promise<void
     if (action === 'update-contractor-pin') {
       const id = String(body.id || '').trim();
       const pin = String(body.pin || '');
-      if (!validId.test(id) || !/^\d{8,12}$/.test(pin)) {
-        res.status(400).json({ error: 'الرقم السري يجب أن يتكون من 8 إلى 12 رقماً.' });
+      if (!validId.test(id) || !/^\d{4,12}$/.test(pin)) {
+        res.status(400).json({ error: 'الرقم السري يجب أن يتكون من 4 أرقام على الأقل.' });
         return;
       }
       const profile = await adminDb.collection('contractors').doc(id).get();

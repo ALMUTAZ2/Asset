@@ -138,10 +138,16 @@ input, select, textarea { transition: border-color .2s ease, box-shadow .2s ease
 /* Guarantee KPI cards, charts, and indicators are never hidden by reveal */
 #dashKpiGrid,
 #dashKpiGrid *,
+#sec_dashboard,
 #sec_dashboard canvas,
 canvas {
   opacity: 1 !important;
   visibility: visible !important;
+}
+
+#sec_dashboard {
+  animation: none !important;
+  transform: none !important;
 }
 
 @keyframes pmEnter { from { opacity: 0; transform: translateY(10px); filter: blur(2px); } to { opacity: 1; transform: none; filter: none; } }
