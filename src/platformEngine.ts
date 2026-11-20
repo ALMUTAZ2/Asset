@@ -82,17 +82,35 @@ function setLocalDropboxToken(token: string): void {
   }
 }
 
+const LOCAL_DROPBOX_CONFIG_KEY = 'sec_dropbox_full_config_v2';
+
+function saveLocalDropboxConfig(cfg: Partial<DropboxCloudSettings>): void {
+  try {
+    localStorage.setItem(LOCAL_DROPBOX_CONFIG_KEY, JSON.stringify(cfg));
+  } catch {}
+}
+
+function loadLocalDropboxConfig(): Partial<DropboxCloudSettings> | null {
+  try {
+    const raw = localStorage.getItem(LOCAL_DROPBOX_CONFIG_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
 export function initPlatformEngine(onFatalError?: (err: Error) => void): () => void {
+  const localSavedConfig = loadLocalDropboxConfig();
   const dropboxConfig = {
-    clientId: '',
-    appSecret: '',
-    refreshToken: '',
-    accessToken: getLocalDropboxToken(),
-    tokenExpiresAt: 0,
+    clientId: localSavedConfig?.clientId || 's64g90otw4sob9j',
+    appSecret: localSavedConfig?.appSecret || '',
+    refreshToken: localSavedConfig?.refreshToken || '',
+    accessToken: localSavedConfig?.accessToken || getLocalDropboxToken(),
+    tokenExpiresAt: Number(localSavedConfig?.tokenExpiresAt || 0),
     tenantId: 'dropbox',
-    baseFolder: '/Apps/Invoice Tracker – Asset Receiving',
-    connectedUser: '',
-    updatedAt: '',
+    baseFolder: localSavedConfig?.baseFolder || '/Apps/Invoice Tracker – Asset Receiving',
+    connectedUser: localSavedConfig?.connectedUser || '',
+    updatedAt: localSavedConfig?.updatedAt || '',
   };
 
   const appState: AppState = {
@@ -117,7 +135,7 @@ export function initPlatformEngine(onFatalError?: (err: Error) => void): () => v
   let bootHidden = false;
   let bootHideTimer: ReturnType<typeof setTimeout> | null = null;
   const bootStartedAt = Date.now();
-  const bootSplashDurationMs = 7000;
+  const bootSplashDurationMs = 0;
 
   const $ = <T extends HTMLElement = HTMLElement>(id: string) =>
     document.getElementById(id) as T | null;
@@ -1981,8 +1999,8 @@ export function initPlatformEngine(onFatalError?: (err: Error) => void): () => v
     const cachedToken = (cfg.accessToken || '').trim();
     const expiresAt = Number(cfg.tokenExpiresAt || 0);
 
-    // Use cached token if still valid within the 2-hour window
-    if (!forceRefresh && cachedToken && expiresAt > Date.now()) {
+    // Use cached token if still valid within the expiration window
+    if (!forceRefresh && cachedToken && (expiresAt === 0 || expiresAt > Date.now())) {
       return cachedToken;
     }
 
@@ -2013,7 +2031,8 @@ export function initPlatformEngine(onFatalError?: (err: Error) => void): () => v
           const tokenInp = $<HTMLInputElement>('odAccessToken');
           if (tokenInp) tokenInp.value = data.access_token;
           updateDropboxExpiryHint();
-          updateDropboxBadges();
+          saveLocalDropboxConfig(appState.dropbox);
+        updateDropboxBadges();
           return data.access_token;
         }
       } catch (err) {
@@ -2076,6 +2095,33 @@ export function initPlatformEngine(onFatalError?: (err: Error) => void): () => v
     setVal('odRefreshToken', appState.dropbox.refreshToken || '');
     setVal('odBaseFolder', appState.dropbox.baseFolder || '/Apps/Invoice Tracker – Asset Receiving');
     setVal('odAccessToken', appState.dropbox.accessToken || '');
+
+    // Update connection status hints in form labels
+    const clientIdEl = $('odClientId');
+    const appSecretEl = $('odAppSecret');
+    const refreshTokenEl = $('odRefreshToken');
+    if (clientIdEl && appState.dropbox.clientId) {
+      clientIdEl.classList.add('border-emerald-400', 'bg-emerald-50');
+      clientIdEl.classList.remove('border-slate-300', 'bg-slate-50');
+    } else if (clientIdEl) {
+      clientIdEl.classList.remove('border-emerald-400', 'bg-emerald-50');
+      clientIdEl.classList.add('border-slate-300', 'bg-slate-50');
+    }
+    if (appSecretEl && appState.dropbox.appSecret) {
+      appSecretEl.classList.add('border-emerald-400', 'bg-emerald-50');
+      appSecretEl.classList.remove('border-slate-300', 'bg-slate-50');
+    } else if (appSecretEl) {
+      appSecretEl.classList.remove('border-emerald-400', 'bg-emerald-50');
+      appSecretEl.classList.add('border-slate-300', 'bg-slate-50');
+    }
+    if (refreshTokenEl && appState.dropbox.refreshToken) {
+      refreshTokenEl.classList.add('border-emerald-400', 'bg-emerald-50');
+      refreshTokenEl.classList.remove('border-slate-300', 'bg-slate-50');
+    } else if (refreshTokenEl) {
+      refreshTokenEl.classList.remove('border-emerald-400', 'bg-emerald-50');
+      refreshTokenEl.classList.add('border-slate-300', 'bg-slate-50');
+    }
+
     updateDropboxBadges();
     updateDropboxExpiryHint();
 
@@ -2166,55 +2212,81 @@ export function initPlatformEngine(onFatalError?: (err: Error) => void): () => v
   }
 
   async function saveDropboxConfig(): Promise<void> {
-    const newClientId = ($<HTMLInputElement>('odClientId')?.value || '').trim();
-    const newAppSecret = ($<HTMLInputElement>('odAppSecret')?.value || '').trim();
+    const saveBtn = $('dropboxSaveBtn') as HTMLButtonElement | null;
+    if (saveBtn) { saveBtn.disabled = true; saveBtn.textContent = '⏳ جاري الحفظ...'; }
+
+    const newClientId   = ($<HTMLInputElement>('odClientId')?.value || '').trim();
+    const newAppSecret  = ($<HTMLInputElement>('odAppSecret')?.value || '').trim();
     const newRefreshToken = ($<HTMLInputElement>('odRefreshToken')?.value || '').trim();
     const newBaseFolder =
-      ($<HTMLInputElement>('odBaseFolder')?.value || '').trim() || '/Apps/Invoice Tracker – Asset Receiving';
+      ($<HTMLInputElement>('odBaseFolder')?.value || '').trim() ||
+      '/Apps/Invoice Tracker \u2013 Asset Receiving';
     const newAccessToken = ($<HTMLInputElement>('odAccessToken')?.value || '').trim();
 
-    const credsChanged =
-      newClientId !== appState.dropbox.clientId ||
-      newAppSecret !== appState.dropbox.appSecret ||
-      newRefreshToken !== appState.dropbox.refreshToken;
+    // Always update clientId & baseFolder from form
+    if (newClientId)      appState.dropbox.clientId     = newClientId;
+    if (newBaseFolder)    appState.dropbox.baseFolder    = newBaseFolder;
 
-    appState.dropbox.clientId = newClientId;
-    appState.dropbox.appSecret = newAppSecret;
-    appState.dropbox.refreshToken = newRefreshToken;
-    appState.dropbox.baseFolder = newBaseFolder;
-    if (newAccessToken) appState.dropbox.accessToken = newAccessToken;
-    if (credsChanged) appState.dropbox.tokenExpiresAt = 0;
+    // Password fields return '' when user hasn't retyped → preserve existing stored values
+    if (newAppSecret)     appState.dropbox.appSecret     = newAppSecret;
+    if (newRefreshToken)  appState.dropbox.refreshToken  = newRefreshToken;
+    if (newAccessToken) {
+      appState.dropbox.accessToken = newAccessToken;
+      // Set validity for 4 hours for manually pasted token
+      appState.dropbox.tokenExpiresAt = Date.now() + 4 * 3600 * 1000;
+    }
+
+    const credsChanged =
+      (newClientId     && newClientId     !== appState.dropbox.clientId) ||
+      (newAppSecret    && newAppSecret    !== appState.dropbox.appSecret) ||
+      (newRefreshToken && newRefreshToken !== appState.dropbox.refreshToken);
+    if (credsChanged && !newAccessToken) appState.dropbox.tokenExpiresAt = 0;
 
     setLocalDropboxToken(appState.dropbox.accessToken);
+    saveLocalDropboxConfig(appState.dropbox);
 
     try {
       const savedToFirebase = await fsSaveOneDriveSettings({
-        clientId: appState.dropbox.clientId,
-        appSecret: appState.dropbox.appSecret,
-        refreshToken: appState.dropbox.refreshToken,
-        accessToken: appState.dropbox.accessToken,
+        clientId:       appState.dropbox.clientId,
+        appSecret:      appState.dropbox.appSecret,
+        refreshToken:   appState.dropbox.refreshToken,
+        accessToken:    appState.dropbox.accessToken,
         tokenExpiresAt: appState.dropbox.tokenExpiresAt,
-        tenantId: 'dropbox',
-        baseFolder: appState.dropbox.baseFolder,
-        connectedUser: appState.dropbox.connectedUser,
-        updatedAt: new Date().toISOString(),
+        tenantId:       'dropbox',
+        baseFolder:     appState.dropbox.baseFolder,
+        connectedUser:  appState.dropbox.connectedUser,
+        updatedAt:      new Date().toISOString(),
       });
 
-      if (appState.dropbox.refreshToken && appState.dropbox.clientId && appState.dropbox.appSecret) {
+      // Also ensure saved locally after any mutations
+      saveLocalDropboxConfig(appState.dropbox);
+
+      // Only force token refresh if a new manual Access Token was NOT just provided
+      if (!newAccessToken && appState.dropbox.refreshToken && appState.dropbox.clientId && appState.dropbox.appSecret) {
         await getValidDropboxToken(true).catch(() => {});
         scheduleDropboxTokenRefresh();
       }
 
       renderDropboxModule();
+
+      const keyPrefix   = appState.dropbox.clientId     ? appState.dropbox.clientId.slice(0, 8) + '...' : '—';
+      const tokenStatus = appState.dropbox.refreshToken ? '✔ Refresh Token محفوظ' : '⚠ Refresh Token غير موجود';
+      const folderPath  = appState.dropbox.baseFolder   || '/Apps/Invoice Tracker \u2013 Asset Receiving';
+
       showToast(
         savedToFirebase
-          ? 'تم حفظ إعدادات Dropbox في قاعدة بيانات Firebase بنجاح ✓'
-          : 'تم حفظ إعدادات Dropbox محلياً للجلسة الحالية ✓',
+          ? `✅ تم حفظ إعدادات Dropbox في قاعدة بيانات Firebase بنجاح ✓\nالمجلد: ${folderPath}\nRefresh Token محفوظ دائم لتجديد التوكن تلقائياً كل ساعتين`
+          : `✅ تم حفظ إعدادات Dropbox بشكل دائم ✓\nالمجلد: ${folderPath}\nRefresh Token محفوظ دائم لتجديد التوكن تلقائياً كل ساعتين`,
         'success'
       );
-      logAudit('حفظ إعدادات Dropbox', `تم تحديث المجلد: ${appState.dropbox.baseFolder}`);
+      logAudit(
+        'حفظ إعدادات Dropbox',
+        `App Key: ${keyPrefix} | المجلد: ${folderPath} | ${tokenStatus}`
+      );
     } catch {
-      showToast('تعذر حفظ إعدادات Dropbox في Firebase', 'error');
+      showToast('❌ تعذر حفظ إعدادات Dropbox في Firebase', 'error');
+    } finally {
+      if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = 'حفظ الإعدادات في Firebase'; }
     }
   }
 
@@ -2630,6 +2702,12 @@ export function initPlatformEngine(onFatalError?: (err: Error) => void): () => v
         } else {
           failCount++;
           lastError = res.error || 'خطأ أثناء الرفع';
+          if (lastError.includes('missing_scope') || lastError.includes('files.content.write')) {
+            lastError = 'صلاحية الكتابة مفقودة (missing_scope: files.content.write). يرجى تفعيل صلاحية files.content.write في تبويب Permissions بتطبيق Dropbox ثم إعادة توليد التوكن.';
+            // Add remaining items to failCount and break to avoid 600+ failed requests
+            failCount += (items.length - 1 - i);
+            break;
+          }
         }
       } catch (e: any) {
         failCount++;
@@ -2652,24 +2730,75 @@ export function initPlatformEngine(onFatalError?: (err: Error) => void): () => v
 
     renderDropboxModule();
 
-    if (successCount > 0) {
+    // ── Sync Result Panel ──────────────────────────────────────────────
+    const resultBox = $('dropboxSyncResultBox');
+    const basePath  = cleanDropboxBasePath(appState.dropbox.baseFolder);
+    const isSuccess = successCount > 0;
+    const hasErrors = failCount > 0;
+
+    if (resultBox) {
+      const bgClass     = isSuccess ? (hasErrors ? 'bg-amber-50 border-amber-300' : 'bg-emerald-50 border-emerald-300') : 'bg-red-50 border-red-300';
+      const iconClass   = isSuccess ? (hasErrors ? 'text-amber-500' : 'text-emerald-500') : 'text-red-500';
+      const titleIcon   = isSuccess ? (hasErrors ? '⚠️' : '✅') : '❌';
+      const titleText   = isSuccess
+        ? (hasErrors ? 'اكتملت المزامنة مع أخطاء جزئية' : 'اكتملت المزامنة بنجاح كامل')
+        : 'فشلت عملية المزامنة';
+
+      resultBox.className = `rounded-xl border p-4 space-y-3 ${bgClass}`;
+      resultBox.innerHTML = `
+        <div class="flex items-center gap-2">
+          <span class="text-xl">${titleIcon}</span>
+          <span class="font-extrabold text-sm ${iconClass}">${titleText}</span>
+          <button onclick="this.closest('#dropboxSyncResultBox').classList.add('hidden')"
+            class="mr-auto text-slate-400 hover:text-slate-600 text-lg leading-none font-bold">×</button>
+        </div>
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
+          <div class="bg-white rounded-xl p-3 border border-slate-200 shadow-sm">
+            <div class="text-2xl font-extrabold text-se-mid-blue">${allContractorNames.size}</div>
+            <div class="text-[11px] font-bold text-slate-500 mt-0.5">مقاول / مجلد</div>
+          </div>
+          <div class="bg-white rounded-xl p-3 border border-slate-200 shadow-sm">
+            <div class="text-2xl font-extrabold text-se-dark-blue">${syncedWoCount}</div>
+            <div class="text-[11px] font-bold text-slate-500 mt-0.5">أمر عمل</div>
+          </div>
+          <div class="bg-white rounded-xl p-3 border border-slate-200 shadow-sm">
+            <div class="text-2xl font-extrabold text-emerald-600">${syncedPhotosCount}</div>
+            <div class="text-[11px] font-bold text-slate-500 mt-0.5">صورة مرفوعة</div>
+          </div>
+          <div class="bg-white rounded-xl p-3 border border-slate-200 shadow-sm">
+            <div class="text-2xl font-extrabold ${hasErrors ? 'text-red-500' : 'text-slate-300'}">${failCount}</div>
+            <div class="text-[11px] font-bold text-slate-500 mt-0.5">فشل الرفع</div>
+          </div>
+        </div>
+        <div class="flex items-center gap-2 bg-white rounded-xl border border-slate-200 px-3 py-2" dir="ltr">
+          <svg class="w-4 h-4 shrink-0 text-se-mid-blue" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"/></svg>
+          <span class="text-xs font-mono font-bold text-slate-700 truncate">${basePath}</span>
+        </div>
+        ${hasErrors && lastError ? `<p class="text-xs text-red-600 font-semibold">آخر خطأ: ${lastError}</p>` : ''}
+        <p class="text-[11px] text-slate-400 font-medium text-left" dir="ltr">${new Date().toLocaleString('ar-SA')}</p>
+      `;
+      resultBox.classList.remove('hidden');
+      resultBox.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+
+    if (isSuccess) {
       logAudit(
         'مزامنة شاملة Dropbox',
-        `تم نقل ومزامنة ${syncedWoCount} أمر عمل و ${allContractorNames.size} مقاول و ${syncedPhotosCount} صورة إلى Dropbox`
+        `تم نقل ومزامنة ${syncedWoCount} أمر عمل و ${allContractorNames.size} مقاول و ${syncedPhotosCount} صورة إلى Dropbox | المسار: ${basePath}`
       );
       showToast(
-        failCount > 0
-          ? `تمت مزامنة ${syncedWoCount} أمر عمل و ${syncedPhotosCount} صورة، وتعذر رفع ${failCount} عنصر (${lastError})`
-          : `اكتملت مزامنة كافة المقاولين (${allContractorNames.size}) وأوامر العمل (${syncedWoCount} أمر عمل) والصور (${syncedPhotosCount} صورة) إلى Dropbox بنجاح ✓`,
-        failCount > 0 ? 'warning' : 'success'
+        hasErrors
+          ? `تمت مزامنة ${syncedWoCount} أمر عمل و ${syncedPhotosCount} صورة، وتعذر رفع ${failCount} عنصر`
+          : `اكتملت المزامنة ✓ — ${allContractorNames.size} مقاول | ${syncedWoCount} أمر عمل | ${syncedPhotosCount} صورة`,
+        hasErrors ? 'warning' : 'success'
       );
     } else {
-      showToast(`فشلت المزامنة إلى Dropbox: ${lastError}`, 'error');
+      showToast(`❌ فشلت المزامنة إلى Dropbox: ${lastError}`, 'error');
     }
 
     setTimeout(() => {
       if (container) container.classList.add('hidden');
-    }, 5000);
+    }, 6000);
   }
 
   // Aliases for full backward compatibility
@@ -2762,13 +2891,31 @@ export function initPlatformEngine(onFatalError?: (err: Error) => void): () => v
     }
 
     bootHidden = true;
-    $('dbBootOverlay')?.classList.add('hidden');
-    refreshLucideIcons();
+    const overlay = $('dbBootOverlay');
+    if (overlay) {
+      overlay.classList.add('hidden');
+      refreshLucideIcons();
+    }
+  }
+
+  function togglePasswordVisibility(inputId: string, btn?: HTMLElement): void {
+    const inp = $(inputId) as HTMLInputElement | null;
+    if (!inp) return;
+    const isPass = inp.type === 'password';
+    inp.type = isPass ? 'text' : 'password';
+    if (btn) {
+      const icon = btn.querySelector('[data-lucide]');
+      if (icon) {
+        icon.setAttribute('data-lucide', isPass ? 'eye-off' : 'eye');
+        refreshLucideIcons();
+      }
+    }
   }
 
   // ==================== WINDOW GLOBAL HANDLERS ====================
   const w = window as unknown as Record<string, unknown>;
   const bindings: Record<string, unknown> = {
+    togglePasswordVisibility,
     switchLoginTab,
     openContractorDropdown,
     toggleContractorDropdown,
@@ -2883,10 +3030,13 @@ export function initPlatformEngine(onFatalError?: (err: Error) => void): () => v
       onOneDrive: (settings) => {
         appState.dropbox = {
           ...settings,
+          clientId: settings.clientId || appState.dropbox.clientId || 's64g90otw4sob9j',
           appSecret: settings.appSecret || appState.dropbox.appSecret,
           refreshToken: settings.refreshToken || appState.dropbox.refreshToken,
+          baseFolder: settings.baseFolder || appState.dropbox.baseFolder || '/Apps/Invoice Tracker – Asset Receiving',
           tokenExpiresAt: appState.dropbox.tokenExpiresAt || 0,
         };
+        saveLocalDropboxConfig(appState.dropbox);
         updateDropboxBadges();
         updateDropboxExpiryHint();
         scheduleDropboxTokenRefresh();
@@ -2983,11 +3133,15 @@ export function initPlatformEngine(onFatalError?: (err: Error) => void): () => v
       if (appState.contractors.length === 0) appState.contractors = buildSeedContractors();
       if (appState.staffUsers.length === 0) appState.staffUsers = buildSeedStaffUsers();
       if (appState.auditLog.length === 0) appState.auditLog = buildSeedAuditLogs();
+      const localStored = loadLocalDropboxConfig();
       appState.dropbox = {
         ...dropboxConfig,
-        accessToken: resolvedSession.type === 'staff' && resolvedSession.role === 'admin' ? getLocalDropboxToken() : '',
-        appSecret: '',
-        refreshToken: '',
+        clientId: localStored?.clientId || appState.dropbox.clientId || 's64g90otw4sob9j',
+        appSecret: localStored?.appSecret || appState.dropbox.appSecret,
+        refreshToken: localStored?.refreshToken || appState.dropbox.refreshToken,
+        baseFolder: localStored?.baseFolder || appState.dropbox.baseFolder || '/Apps/Invoice Tracker – Asset Receiving',
+        accessToken: localStored?.accessToken || (resolvedSession.type === 'staff' && resolvedSession.role === 'admin' ? getLocalDropboxToken() : ''),
+        tokenExpiresAt: Number(localStored?.tokenExpiresAt || appState.dropbox.tokenExpiresAt || 0),
       };
       $('loginView')?.classList.add('hidden');
       if (resolvedSession.type === 'contractor') {
@@ -3007,6 +3161,21 @@ export function initPlatformEngine(onFatalError?: (err: Error) => void): () => v
   // ==================== FIRESTORE BOOTSTRAP ====================
   populateStaticSelects();
   refreshLucideIcons();
+
+  const percentEl = $('dbBootPercentText');
+  if (percentEl) {
+    const pTimer = setInterval(() => {
+      if (bootHidden || destroyed) {
+        clearInterval(pTimer);
+        return;
+      }
+      const elapsed = Date.now() - bootStartedAt;
+      const pct = Math.min(100, Math.round((elapsed / bootSplashDurationMs) * 100));
+      percentEl.textContent = `${pct}%`;
+      if (pct >= 100) clearInterval(pTimer);
+    }, 40);
+  }
+
   maybeHideBootOverlay();
   const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
     void handleAuthState(user);

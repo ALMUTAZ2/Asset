@@ -531,7 +531,7 @@ export const STAFF_VIEW_MARKUP = `
                   </div>
                   <div>
                     <label class="block text-xs font-extrabold text-se-dark-blue mb-1.5">Dropbox App Key (Client ID)</label>
-                    <input type="text" id="odClientId" placeholder="أدخل App Key من لوحة مطوري Dropbox"
+                    <input type="text" id="odClientId" value="s64g90otw4sob9j" placeholder="أدخل App Key من لوحة مطوري Dropbox"
                       class="w-full rounded-xl border border-slate-300 bg-slate-50 py-2.5 px-3.5 text-xs font-mono outline-none" dir="ltr" />
                   </div>
                   <div>
@@ -559,7 +559,7 @@ export const STAFF_VIEW_MARKUP = `
 
                 <!-- Action Buttons -->
                 <div class="flex flex-wrap gap-2.5 pt-2">
-                  <button type="button" onclick="saveDropboxConfig()" class="px-4 py-2.5 rounded-xl bg-se-dark-blue hover:bg-se-blue text-white text-xs font-bold transition flex items-center gap-1.5 shadow-sm">
+                  <button type="button" id="dropboxSaveBtn" onclick="saveDropboxConfig()" class="px-4 py-2.5 rounded-xl bg-se-dark-blue hover:bg-se-blue text-white text-xs font-bold transition flex items-center gap-1.5 shadow-sm">
                     <i data-lucide="save" class="w-4 h-4"></i>
                     <span>حفظ الإعدادات في Firebase</span>
                   </button>
@@ -589,6 +589,9 @@ export const STAFF_VIEW_MARKUP = `
                     <div id="dropboxSyncProgressBar" class="h-full bg-gradient-to-r from-se-mid-blue to-se-light-blue rounded-full transition-all duration-300 w-0"></div>
                   </div>
                 </div>
+
+                <!-- Sync Result Box -->
+                <div id="dropboxSyncResultBox" class="hidden rounded-xl border p-4 space-y-3"></div>
 
                 <!-- Setup Guide -->
                 <div class="bg-slate-50 rounded-xl p-4 border border-slate-200 text-xs space-y-2">

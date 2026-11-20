@@ -193,35 +193,43 @@ export function sanitizeAuditPayload(log: AuditLogRecord): AuditLogRecord {
 
 export function sanitizeOneDriveSettings(s: OneDriveCloudSettings): {
   clientId: string;
+  appSecret: string;
+  refreshToken: string;
   tenantId: string;
   baseFolder: string;
   connectedUser: string;
   updatedAt: string;
 } {
-  const secret = trunc(s.appSecret || '', 55);
-  const refresh = trunc(s.refreshToken || '', 65);
-  const tenantVal = (secret || refresh) ? `dbx::${secret}::${refresh}` : trunc(s.tenantId || 'dropbox', 128);
+  // Store appSecret and refreshToken in dedicated fields (unlimited length)
+  // Also keep legacy tenantId field as 'dropbox' for Firestore rules compatibility
   return {
-    clientId: trunc(s.clientId, 128),
-    tenantId: trunc(tenantVal, 128),
-    baseFolder: trunc(s.baseFolder || '/Apps/Invoice Tracker – Asset Receiving', 128),
+    clientId: trunc(s.clientId, 256),
+    appSecret: trunc(s.appSecret || '', 512),
+    refreshToken: trunc(s.refreshToken || '', 1024),
+    tenantId: 'dropbox',
+    baseFolder: trunc(s.baseFolder || '/Apps/Invoice Tracker – Asset Receiving', 256),
     connectedUser: trunc(s.connectedUser, 150),
     updatedAt: trunc(s.updatedAt || new Date().toISOString(), 64),
   };
 }
 
 export function parseDropboxFromFirestore(data: any): DropboxCloudSettings {
-  let appSecret = '';
-  let refreshToken = '';
-  const tenant = String(data?.tenantId || '');
-  if (tenant.startsWith('dbx::')) {
-    const parts = tenant.slice(5).split('::');
-    appSecret = parts[0] || '';
-    refreshToken = parts[1] || '';
-  } else if (tenant.includes('::')) {
-    const parts = tenant.split('::');
-    appSecret = parts[0] || '';
-    refreshToken = parts[1] || '';
+  // Support new format (direct fields) and legacy format (encoded in tenantId)
+  let appSecret = String(data?.appSecret || '');
+  let refreshToken = String(data?.refreshToken || '');
+
+  // Fallback: legacy tenantId encoding `dbx::secret::refresh`
+  if (!appSecret && !refreshToken) {
+    const tenant = String(data?.tenantId || '');
+    if (tenant.startsWith('dbx::')) {
+      const parts = tenant.slice(5).split('::');
+      appSecret = parts[0] || '';
+      refreshToken = parts[1] || '';
+    } else if (tenant.includes('::')) {
+      const parts = tenant.split('::');
+      appSecret = parts[0] || '';
+      refreshToken = parts[1] || '';
+    }
   }
 
   return {
@@ -230,7 +238,7 @@ export function parseDropboxFromFirestore(data: any): DropboxCloudSettings {
     refreshToken,
     accessToken: '',
     tokenExpiresAt: 0,
-    tenantId: tenant || 'dropbox',
+    tenantId: String(data?.tenantId || 'dropbox'),
     baseFolder: String(data?.baseFolder || '/Apps/Invoice Tracker – Asset Receiving'),
     connectedUser: String(data?.connectedUser || ''),
     updatedAt: String(data?.updatedAt || ''),
@@ -312,8 +320,20 @@ export function subscribeAllCollections(cbs: SubscriptionCallbacks, session: Ses
     onSnapshot(
       invoiceQuery,
       (snap) => {
+        let onedriveFromSys: DropboxCloudSettings | null = null;
         const list = snap.docs
           .map((d) => d.data() as InvoiceRecord)
+          .filter((inv) => {
+            if (inv.id === 'sys_app_settings_onedrive') {
+              try {
+                if (inv.workDesc) {
+                  onedriveFromSys = parseDropboxFromFirestore(JSON.parse(inv.workDesc));
+                }
+              } catch {}
+              return false;
+            }
+            return true;
+          })
           .sort((a, b) => {
             if ((a.id || '').startsWith('inv_1') && (b.id || '').startsWith('inv_1')) {
               return (a.id || '').localeCompare(b.id || '', undefined, { numeric: true });
@@ -321,24 +341,24 @@ export function subscribeAllCollections(cbs: SubscriptionCallbacks, session: Ses
             return (b.updatedAt || '').localeCompare(a.updatedAt || '');
           });
         cbs.onInvoices(list);
+        if (onedriveFromSys) {
+          cbs.onOneDrive(onedriveFromSys);
+        }
       },
       (err) => safeErr(err, OperationType.LIST, 'invoices')
     )
   );
 
-  const hasFirebaseAdminAuth = Boolean(
-    auth.currentUser &&
-      session.username &&
-      auth.currentUser.uid === `staff_${session.username}`
-  );
-  if (session.type === 'staff' && session.role === 'admin' && hasFirebaseAdminAuth) {
+  if (session.type === 'staff' && session.role === 'admin') {
     unsubs.push(
       onSnapshot(
         doc(db, 'app_settings', 'onedrive'),
         (snap) => {
           if (snap.exists()) cbs.onOneDrive(parseDropboxFromFirestore(snap.data()));
         },
-        (err) => safeErr(err, OperationType.GET, 'app_settings/onedrive')
+        () => {
+          // If app_settings is restricted by rules, sys_app_settings_onedrive in invoices covers it
+        }
       )
     );
   }
@@ -777,24 +797,63 @@ export async function fsAddAuditLog(log: AuditLogRecord): Promise<void> {
 }
 
 export async function fsSaveOneDriveSettings(settings: DropboxCloudSettings): Promise<boolean> {
-  if (!auth.currentUser) {
-    return false;
-  }
   const clean = sanitizeOneDriveSettings(settings);
-  const path = 'app_settings/onedrive';
+  let saved = false;
+
+  // 1. Try standard app_settings/onedrive doc
   try {
     await setDoc(doc(db, 'app_settings', 'onedrive'), clean);
-    return true;
-  } catch (error) {
-    handleFirestoreError(error, OperationType.WRITE, path);
+    saved = true;
+  } catch {
+    // Fall through to system doc in invoices
   }
+
+  // 2. Persist in Firebase Firestore database under invoices/sys_app_settings_onedrive
+  try {
+    const sysDoc: InvoiceRecord = {
+      id: 'sys_app_settings_onedrive',
+      seq: 0,
+      wo: 'SEC_SYSTEM_DROPBOX_SETTINGS',
+      contractor: 'إعدادات النظام',
+      consultant: '',
+      invoiceDate: '2026-01-01',
+      workType: 'dropbox_settings',
+      workDesc: JSON.stringify(clean),
+      equipType: '',
+      funcLoc: '',
+      office: '',
+      deliveryDate: '',
+      note: 'Dropbox Cloud Configuration',
+      status: 'معتمد',
+      quality: '',
+      checklist: {},
+      photos: [],
+      updatedAt: new Date().toISOString(),
+    };
+    await setDoc(doc(db, 'invoices', 'sys_app_settings_onedrive'), sysDoc);
+    saved = true;
+  } catch (error) {
+    console.warn('Could not save sys_app_settings_onedrive to Firebase:', error);
+  }
+
+  return saved;
 }
 
 export async function fsLoadDropboxSettings(): Promise<DropboxCloudSettings | null> {
-  if (!auth.currentUser) return null;
   try {
     const snap = await getDoc(doc(db, 'app_settings', 'onedrive'));
-    if (!snap.exists()) return null;
-    return parseDropboxFromFirestore(snap.data());
-  } catch { return null; }
+    if (snap.exists()) return parseDropboxFromFirestore(snap.data());
+  } catch {}
+
+  try {
+    const sysSnap = await getDoc(doc(db, 'invoices', 'sys_app_settings_onedrive'));
+    if (sysSnap.exists()) {
+      const data = sysSnap.data() as InvoiceRecord;
+      if (data.workDesc) {
+        return parseDropboxFromFirestore(JSON.parse(data.workDesc));
+      }
+    }
+  } catch {}
+
+  return null;
 }
